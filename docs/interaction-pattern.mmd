@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant Caller
+    participant App as Application (interactor)
+    participant Domain
+    participant Repo as Repository (interface)
+
+    Caller->>App: Execute(input)
+    App->>Repo: FindByID(id)
+    Repo-->>App: entity or nil
+
+    alt entity not found
+        App-->>Caller: return error
+    else found
+        App->>Domain: entity.BusinessMethod(args)
+        Domain->>Domain: validate rules
+
+        alt validation fails
+            Domain-->>App: return sentinel error
+            App-->>Caller: return error
+        else passes
+            Domain-->>App: modify entity state
+            App->>Repo: Save(entity)
+            Repo-->>App: nil
+            App-->>Caller: return Output
+        end
+    end

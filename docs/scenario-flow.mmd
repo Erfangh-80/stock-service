@@ -1,0 +1,22 @@
+flowchart TD
+    A(["Seller wants to list a discounted product"])
+    A --> B[1. CreateStore]
+    B --> C[2. CreateWarehouse]
+    C --> D[3. CreateLink]
+    D --> E[4. CreateInventory]
+    E --> F[5. ApplyPromotionToSale]
+    F --> G(["Product on sale with discount"])
+
+    B -.-> B1["domain.NewStore() validates name, sets defaults"]
+    C -.-> C1["domain.NewWarehouse() validates name"]
+    D -.-> D1["domain.NewStoreWarehouseLink() sets primary"]
+    E -.-> E1["domain.NewInventory() validates price, sets defaults"]
+    F -.-> F1["inv.ApplyPromotion() validates 3 rules, updates state"]
+
+    style A fill:#e1f5fe,stroke:#0288d1
+    style G fill:#c8e6c9,stroke:#388e3c
+    style B fill:#fff3e0,stroke:#f57c00
+    style C fill:#fff3e0,stroke:#f57c00
+    style D fill:#fff3e0,stroke:#f57c00
+    style E fill:#fff3e0,stroke:#f57c00
+    style F fill:#fff3e0,stroke:#f57c00

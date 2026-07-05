@@ -1,0 +1,47 @@
+sequenceDiagram
+    participant C as Caller
+    participant UC as ApplyPromotionInteractor
+    participant D as Inventory (domain)
+    participant V as Validator
+    participant R as Repository
+
+    C->>UC: Execute({SaleID:1, PromotionID:1, FinalPrice:89.99})
+    UC->>R: FindByID(1)
+
+    alt not found
+        R-->>UC: nil
+        UC-->>C: ErrSaleNotFound
+    end
+
+    R-->>UC: Inventory{BasePrice:100}
+    UC->>D: ApplyPromotion(1, 89.99, start, end)
+    D->>D: already has promotion?
+
+    alt yes
+        D-->>UC: ErrPromotionAlreadyApplied
+        UC-->>C: ErrPromotionAlreadyApplied
+    end
+
+    D->>V: ValidatePromotionDates(start, end)
+
+    alt end not after start
+        V-->>D: ErrInvalidPromotionDates
+        D-->>UC: ErrInvalidPromotionDates
+        UC-->>C: ErrInvalidPromotionDates
+    end
+
+    V-->>D: nil
+    D->>V: ValidateFinalPrice(89.99)
+
+    alt price <= 0
+        V-->>D: ErrInvalidFinalPrice
+        D-->>UC: ErrInvalidFinalPrice
+        UC-->>C: ErrInvalidFinalPrice
+    end
+
+    V-->>D: nil
+    D->>D: set PromotionID=1, FinalPrice=89.99, Status=pending
+    D-->>UC: nil
+    UC->>R: Save(sale)
+    R-->>UC: nil
+    UC-->>C: Output{Inventory: updated}
