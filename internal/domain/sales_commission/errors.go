@@ -7,4 +7,6 @@ var (
 	ErrInvalidMinPrice    = errors.New("minimum price must be greater than zero")
 	ErrInvalidMaxPrice    = errors.New("maximum price must be greater than minimum price")
 	ErrInvalidMinQty      = errors.New("minimum quantity must be greater than or equal to zero")
+	ErrCommissionNotFound = errors.New("sales commission not found")
+	ErrRuleNotFound       = errors.New("category commission rule not found")
 )

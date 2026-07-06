@@ -1,49 +1,14 @@
 package salescommission_test
 
 import (
-	"errors"
 	"testing"
 
 	domainsalescommission "stock-service/internal/domain/sales_commission"
 	"stock-service/internal/application/sales_commission"
 )
 
-type updateMaxPriceInMemoryRepo struct {
-	commissions map[int64]*domainsalescommission.SalesCommission
-	nextID      int64
-}
-
-func newUpdateMaxPriceInMemoryRepo() *updateMaxPriceInMemoryRepo {
-	return &updateMaxPriceInMemoryRepo{
-		commissions: make(map[int64]*domainsalescommission.SalesCommission),
-		nextID:      1,
-	}
-}
-
-func (r *updateMaxPriceInMemoryRepo) Save(sc *domainsalescommission.SalesCommission) error {
-	if sc.ID == 0 {
-		sc.ID = r.nextID
-		r.nextID++
-	}
-	r.commissions[sc.ID] = sc
-	return nil
-}
-
-func (r *updateMaxPriceInMemoryRepo) FindByID(id int64) (*domainsalescommission.SalesCommission, error) {
-	sc, ok := r.commissions[id]
-	if !ok {
-		return nil, errors.New("not found")
-	}
-	return sc, nil
-}
-
-func (r *updateMaxPriceInMemoryRepo) Delete(id int64) error {
-	delete(r.commissions, id)
-	return nil
-}
-
 func TestUpdateMaxPrice_Success(t *testing.T) {
-	repo := newUpdateMaxPriceInMemoryRepo()
+	repo := newInMemorySalesCommissionRepo()
 	uc := salescommission.NewUpdateMaxPriceUseCase(repo)
 
 	sc, _ := domainsalescommission.NewSalesCommission(1, 1, domainsalescommission.SaleModelRetail, 5, 100)
@@ -64,7 +29,7 @@ func TestUpdateMaxPrice_Success(t *testing.T) {
 }
 
 func TestUpdateMaxPrice_NotFound_ReturnsError(t *testing.T) {
-	repo := newUpdateMaxPriceInMemoryRepo()
+	repo := newInMemorySalesCommissionRepo()
 	uc := salescommission.NewUpdateMaxPriceUseCase(repo)
 
 	err := uc.Execute(999, 200)
@@ -74,7 +39,7 @@ func TestUpdateMaxPrice_NotFound_ReturnsError(t *testing.T) {
 }
 
 func TestUpdateMaxPrice_InvalidMaxPrice_ReturnsError(t *testing.T) {
-	repo := newUpdateMaxPriceInMemoryRepo()
+	repo := newInMemorySalesCommissionRepo()
 	uc := salescommission.NewUpdateMaxPriceUseCase(repo)
 
 	sc, _ := domainsalescommission.NewSalesCommission(1, 1, domainsalescommission.SaleModelRetail, 5, 100)

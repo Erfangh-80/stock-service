@@ -610,35 +610,106 @@
 | `UpdateMaxPrice(maxPrice)` | ✅ validates > min |
 | `UpdateMinQty(qty)` | ✅ validates >= 0 |
 
-**⚠️ Known gap:** No `CalculateCommission(price, qty) float64` method exists. The rate is stored but never applied.
+**CategoryCommissionRule entity** (`internal/domain/sales_commission/category_commission_rule.go`)
+
+| Field | Type | Status |
+|---|---|---|
+| `ID` | `int64` | ✅ |
+| `Title` | `string` | ✅ |
+| `CategoryID` | `int64` | ✅ |
+| `RatePercent` | `float64` | ✅ (0–100) |
+| `MinPrice` | `float64` | ✅ (> 0) |
+| `MaxPrice` | `*float64` | ✅ (> min) |
+| `IsActive` | `bool` | ✅ |
+| `CreatedAt` | `time.Time` | ✅ |
+
+**Domain methods**
+
+| Method | Status |
+|---|---|
+| `NewCategoryCommissionRule(title, categoryID, ratePercent, minPrice, maxPrice)` | ✅ validates title, rate, min/max price |
+| `Activate()` | ✅ |
+| `Deactivate()` | ✅ |
+
+**Repository** (`internal/domain/sales_commission/repository.go`)
+
+| Method | Status |
+|---|---|
+| `Save(sc)` | ✅ |
+| `FindByID(id)` | ✅ |
+| `FindByInventoryID(inventoryID)` | ✅ |
+| `FindAll(filter)` | ✅ with pagination + filter by `InventoryID`, `MinPrice`, `MaxPrice` |
+| `Delete(id)` | ✅ |
+
+**CategoryCommissionRule repository** (`internal/domain/sales_commission/category_commission_rule_repository.go`)
+
+| Method | Status |
+|---|---|
+| `Save(rule)` | ✅ |
+| `FindByID(id)` | ✅ |
+| `FindAll(filter)` | ✅ with pagination + filter by `CategoryID`, `IsActive`, `Title` |
+| `Delete(id)` | ✅ |
 
 **Use cases**
 
 | Use Case | Signature | Status |
 |---|---|---|
 | CreateSalesCommission | `Execute(inventoryID, ruleID, saleModel, rate, minPrice) (*SalesCommission, error)` | ✅ |
+| GetSalesCommission | `Execute(GetSalesCommissionInput) (*SalesCommission, error)` | ✅ |
+| GetByInventorySalesCommission | `Execute(GetByInventorySalesCommissionInput) (*SalesCommission, error)` | ✅ |
+| ListSalesCommissions | `Execute(ListSalesCommissionsInput) (*ListSalesCommissionsOutput, error)` | ✅ by inventory_id, min_price, max_price; paginated |
+| DeleteSalesCommission | `Execute(DeleteSalesCommissionInput) error` | ✅ validates existence before delete |
 | UpdateMaxPrice | `Execute(commissionID, maxPrice) error` | ✅ |
 | UpdateMinQty | `Execute(commissionID, minQty) error` | ✅ |
+| CalculateCommission | `Execute(CalculateCommissionInput) (*CommissionCalculation, error)` | ✅ rate × price × qty, promotion-aware price selection |
+| CreateCategoryCommissionRule | `Execute(title string, categoryID int64, ratePercent, minPrice float64, maxPrice *float64) (*CategoryCommissionRule, error)` | ✅ |
+| GetCategoryCommissionRule | `Execute(id int64) (*CategoryCommissionRule, error)` | ✅ |
+| ListCategoryCommissionRules | `Execute(ListCategoryCommissionRulesInput) (*ListCategoryCommissionRulesOutput, error)` | ✅ by category_id, is_active, title; paginated |
+| UpdateCategoryCommissionRule | `Execute(input) (*CategoryCommissionRule, error)` | ✅ partial update + activate/deactivate |
+| DeleteCategoryCommissionRule | `Execute(id int64) error` | ✅ validates existence before delete |
+
+**Decide commission base price (base vs final when promotion active)**
+
+| Aspect | Detail |
+|---|---|
+| Package | `internal/application/sales_commission/calculate_commission.go` |
+| Signature | `Execute(input) (*CommissionCalculation, error)` |
+| Dependencies | `sales_commission.Repository` + `inventory.Repository` |
+| Logic | Finds commission by inventory ID → fetches inventory → if inventory has `PromotionID` set and `FinalPrice` non-nil, uses `FinalPrice` (`price_source: "final_price"`); otherwise uses `BasePrice`; applies `MinPrice`/`MaxPrice` constraints → `amount = rate × price × qty` |
+| Price source output | `input_price`, `price_source` ("base_price" or "final_price"), `rate_percent`, `quantity`, `commission_amount`, `min_price`, `max_price` |
 
 **HTTP endpoints**
 
 | Route | Method | Status |
 |---|---|---|
 | `/api/v1/sales-commissions` | POST | ✅ |
+| `/api/v1/sales-commissions` | GET | ✅ list/filter (inventory_id, min_price, max_price, page, limit) |
+| `/api/v1/sales-commissions/{id}` | GET | ✅ get by ID |
+| `/api/v1/sales-commissions/{id}` | DELETE | ✅ |
 | `/api/v1/sales-commissions/{id}/max-price` | PUT | ✅ |
 | `/api/v1/sales-commissions/{id}/min-qty` | PUT | ✅ |
+| `/api/v1/sales-commissions/by-inventory/{inventoryId}` | GET | ✅ get by inventory |
+| `/api/v1/sales-commissions/calculate` | POST | ✅ calculate commission amount |
+| `/api/v1/category-commission-rules` | POST | ✅ |
+| `/api/v1/category-commission-rules` | GET | ✅ list/filter (category_id, is_active, title, page, limit) |
+| `/api/v1/category-commission-rules/{id}` | GET | ✅ |
+| `/api/v1/category-commission-rules/{id}` | PUT | ✅ update |
+| `/api/v1/category-commission-rules/{id}` | DELETE | ✅ |
 
-**Missing SalesCommission features**
+**Test coverage**
 
-| Feature | Status |
-|---|---|
-| Calculate commission amount for a sale (rate × price × qty) | ❌ |
-| Get commission by ID | ❌ |
-| Get commission by inventory | ❌ |
-| List/filter commissions | ❌ |
-| Delete commission | ❌ |
-| CategoryCommissionRule entity CRUD | ❌ |
-| Decide commission base price (base vs final when promotion active) | ❌ |
+| Layer | File | Tests |
+|---|---|---|
+| Entity | `tests/entity/sales_commission/sales_commission_test.go` | 3 |
+| Application | `tests/application/sales_commission/create_sales_commission_test.go` | 3 |
+| Application | `tests/application/sales_commission/get_sales_commission_test.go` | 5 (get by ID + by inventory + list + delete) |
+| Application | `tests/application/sales_commission/update_max_price_test.go` | 2 |
+| Application | `tests/application/sales_commission/update_min_qty_test.go` | 2 |
+| Application | `tests/application/sales_commission/calculate_commission_test.go` | 4 |
+| Application | `tests/application/sales_commission/category_commission_rule_test.go` | 5 |
+| Adapter | `tests/interface/sales_commission/adapter_test.go` | 10 |
+| HTTP Handler | `tests/interface/http/sales_commission/handler_test.go` | 10 |
+| **Total** | | **44** |
 
 ---
 
@@ -795,8 +866,8 @@
 | Feature | Status |
 |---|---|
 | **Auth / permissions** — any caller can call any endpoint | ❌ |
-| **List/search endpoints** — Store, Inventory, Product, Brand, Category have list with filtering + pagination | 🔶 (5/9 domains) |
-| **Pagination** — Store, Inventory, Product use cases support pagination | 🔶 |
+| **List/search endpoints** — Store, Inventory, Product, Brand, Category, Reference Price, Sales Commission have list with filtering + pagination | 🔶 (7/9 domains) |
+| **Pagination** — Store, Inventory, Product, Reference Price, Sales Commission use cases support pagination | 🔶 |
 | **Order / checkout** — entirely absent | ❌ |
 | **User entity** — referenced via `UserID`, `OwnerID`, `CreatedByUserID` but no User domain exists | ❌ |
 | **Address entity** — referenced via `AddressID` but no Address domain exists | ❌ |
@@ -804,7 +875,7 @@
 | **Category entity** — referenced via `CategoryID` in Product and StoreAllowedCategory | ✅ |
 | **Brand entity** — referenced via `BrandID` in Product | ✅ |
 | **Database** — all repos are in-memory, no PostgreSQL implementation | ❌ |
-| **Commission calculation** — rate stored but never computed | ❌ |
+| **Commission calculation** — rate × price × qty with promotion-aware price selection | ✅ |
 | **Promotion usage tracking** — UsedCount and BudgetSpent tracked on apply | ✅ |
 | **Promotion discount rules** — percentage, fixed amount, coupon, budget, eligibility | ✅ |
 | **Global search** — no product search by title_fa/title_en | ❌ |
@@ -815,9 +886,9 @@
 ## Test Coverage
 
 | Package | Files | Tests | Status |
-|---|---|---|---|---|---|
+|---|---|---|---|---|
 | `tests/entity/*` | 8 files | Creation, validation errors, state transitions | ✅ |
-| `tests/application/*` | 47 files | Every use case (success + error) | ✅ |
-| `tests/interface/*` | 18 files | Every adapter method (success + error mapping) | ✅ |
-| `tests/interface/http/*` | 9 files | Every endpoint (success + invalid JSON, invalid ID, errors) | ✅ |
-| **Total** | **73 files** | **35 test suites** | **✅ all pass** |
+| `tests/application/*` | 54 files | Every use case (success + error) | ✅ |
+| `tests/interface/*` (adapter) | 9 files | Every adapter method (success + error mapping) | ✅ |
+| `tests/interface/http/*` (handler) | 9 files | Every endpoint (success + invalid JSON, invalid ID, errors) | ✅ |
+| **Total** | **80 files** | **35 test suites** | **✅ all pass** |

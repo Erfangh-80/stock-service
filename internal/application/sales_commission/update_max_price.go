@@ -17,6 +17,9 @@ func (uc *UpdateMaxPriceUseCase) Execute(commissionID int64, maxPrice float64) e
 	if err != nil {
 		return err
 	}
+	if sc == nil {
+		return salescommission.ErrCommissionNotFound
+	}
 	if err := sc.UpdateMaxPrice(maxPrice); err != nil {
 		return err
 	}

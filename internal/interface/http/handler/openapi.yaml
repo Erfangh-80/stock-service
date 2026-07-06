@@ -1016,6 +1016,110 @@ paths:
                 $ref: "#/components/schemas/SalesCommissionResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+    get:
+      summary: List/filter sales commissions
+      tags: [Sales Commission]
+      parameters:
+        - name: inventory_id
+          in: query
+          schema: { type: integer, format: int64 }
+        - name: sale_model
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesCommissionListResponse"
+
+  /api/v1/sales-commissions/{id}:
+    get:
+      summary: Get sales commission by ID
+      tags: [Sales Commission]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesCommissionResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a sales commission
+      tags: [Sales Commission]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "deleted" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/sales-commissions/by-inventory/{inventoryId}:
+    get:
+      summary: Get sales commission by inventory ID
+      tags: [Sales Commission]
+      parameters:
+        - name: inventoryId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesCommissionResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/sales-commissions/calculate:
+    post:
+      summary: Calculate commission amount for a sale (rate × price × qty)
+      tags: [Sales Commission]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inventory_id, quantity]
+              properties:
+                inventory_id: { type: integer, format: int64 }
+                quantity:     { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionCalculationResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/sales-commissions/{id}/max-price:
     put:
@@ -1038,6 +1142,8 @@ paths:
       responses:
         "200":
           description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
 
   /api/v1/sales-commissions/{id}/min-qty:
     put:
@@ -1060,6 +1166,124 @@ paths:
       responses:
         "200":
           description: OK
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/category-commission-rules:
+    post:
+      summary: Create a category commission rule
+      tags: [Category Commission Rule]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category_id, rate_percent, min_price]
+              properties:
+                category_id:  { type: integer, format: int32 }
+                rate_percent: { type: number, format: double }
+                min_price:    { type: number, format: double }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryCommissionRuleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    get:
+      summary: List/filter category commission rules
+      tags: [Category Commission Rule]
+      parameters:
+        - name: category_id
+          in: query
+          schema: { type: integer, format: int32 }
+        - name: is_active
+          in: query
+          schema: { type: boolean }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryCommissionRuleListResponse"
+
+  /api/v1/category-commission-rules/{id}:
+    get:
+      summary: Get category commission rule by ID
+      tags: [Category Commission Rule]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryCommissionRuleResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update a category commission rule
+      tags: [Category Commission Rule]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rate_percent: { type: number, format: double }
+                min_price:    { type: number, format: double }
+                max_price:    { type: number, format: double, nullable: true }
+                activate:     { type: boolean }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryCommissionRuleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a category commission rule
+      tags: [Category Commission Rule]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "deleted" }
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/store-categories:
     post:
@@ -1591,33 +1815,143 @@ components:
     SalesCommissionResponse:
       type: object
       properties:
-        ID:
+        id:
           type: integer
           format: int64
-        InventoryID:
+        inventory_id:
           type: integer
           format: int64
-        CategoryCommissionRuleID:
+        category_commission_rule_id:
           type: integer
           format: int64
-        SaleModel:
+        sale_model:
           type: string
-        RatePercent:
+        rate_percent:
           type: number
           format: double
-        MinQty:
+        min_qty:
           type: integer
           nullable: true
-        MinPrice:
+        min_price:
           type: number
           format: double
-        MaxPrice:
+        max_price:
           type: number
           format: double
           nullable: true
-        CreatedAt:
+        created_at:
           type: string
           format: date-time
+
+    SalesCommissionListResponse:
+      type: object
+      properties:
+        commissions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int64
+              inventory_id:
+                type: integer
+                format: int64
+              sale_model:
+                type: string
+              rate_percent:
+                type: number
+                format: double
+              min_price:
+                type: number
+                format: double
+              created_at:
+                type: string
+                format: date-time
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    CommissionCalculationResponse:
+      type: object
+      properties:
+        commission_id:
+          type: integer
+          format: int64
+        inventory_id:
+          type: integer
+          format: int64
+        base_price_used:
+          type: number
+          format: double
+        quantity:
+          type: integer
+        rate_percent:
+          type: number
+          format: double
+        commission_amt:
+          type: number
+          format: double
+        price_source:
+          type: string
+          enum: [base_price, final_price]
+
+    CategoryCommissionRuleResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        category_id:
+          type: integer
+          format: int32
+        rate_percent:
+          type: number
+          format: double
+        min_price:
+          type: number
+          format: double
+        max_price:
+          type: number
+          format: double
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    CategoryCommissionRuleListResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int64
+              category_id:
+                type: integer
+                format: int32
+              rate_percent:
+                type: number
+                format: double
+              is_active:
+                type: boolean
+              created_at:
+                type: string
+                format: date-time
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
 
     StoreCategoryResponse:
       type: object

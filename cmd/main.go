@@ -55,6 +55,7 @@ func main() {
 	warehouseRepo := memory.NewWarehouseRepository()
 	refPriceRepo := memory.NewReferencePriceRepository()
 	salesCommRepo := memory.NewSalesCommissionRepository()
+	catCommRuleRepo := memory.NewCategoryCommissionRuleRepository()
 	storeCatRepo := memory.NewStoreCategoryRepository()
 	warehouseLinkRepo := memory.NewWarehouseLinkRepository()
 	productRepo := memory.NewProductRepository()
@@ -173,6 +174,19 @@ func main() {
 		appsalescommission.NewCreateSalesCommissionUseCase(salesCommRepo),
 		appsalescommission.NewUpdateMaxPriceUseCase(salesCommRepo),
 		appsalescommission.NewUpdateMinQtyUseCase(salesCommRepo),
+		appsalescommission.NewGetSalesCommissionUseCase(salesCommRepo),
+		appsalescommission.NewGetByInventorySalesCommissionUseCase(salesCommRepo),
+		appsalescommission.NewListSalesCommissionsUseCase(salesCommRepo),
+		appsalescommission.NewDeleteSalesCommissionUseCase(salesCommRepo),
+		appsalescommission.NewCalculateCommissionUseCase(salesCommRepo, inventoryRepo),
+	)
+
+	catCommRuleAdapter := salescommissioninterface.NewCategoryCommissionRuleAdapter(
+		appsalescommission.NewCreateCategoryCommissionRuleUseCase(catCommRuleRepo),
+		appsalescommission.NewGetCategoryCommissionRuleUseCase(catCommRuleRepo),
+		appsalescommission.NewListCategoryCommissionRulesUseCase(catCommRuleRepo),
+		appsalescommission.NewUpdateCategoryCommissionRuleUseCase(catCommRuleRepo),
+		appsalescommission.NewDeleteCategoryCommissionRuleUseCase(catCommRuleRepo),
 	)
 
 	storeCatAdapter := storeallowedcategoryinterface.NewAdapter(
@@ -213,6 +227,7 @@ func main() {
 		Promotion:        promotionAdapter,
 		ReferencePrice:   refPriceAdapter,
 		SalesCommission:  salesCommAdapter,
+		CommissionRule:    catCommRuleAdapter,
 		StoreCategory:    storeCatAdapter,
 		WarehouseLink:    warehouseLinkAdapter,
 		Warehouse:        warehouseAdapter,

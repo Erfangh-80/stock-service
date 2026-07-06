@@ -17,6 +17,9 @@ func (uc *UpdateMinQtyUseCase) Execute(commissionID int64, minQty int) error {
 	if err != nil {
 		return err
 	}
+	if sc == nil {
+		return salescommission.ErrCommissionNotFound
+	}
 	if err := sc.UpdateMinQty(minQty); err != nil {
 		return err
 	}

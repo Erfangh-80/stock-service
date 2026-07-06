@@ -36,6 +36,7 @@ type Config struct {
 	Promotion       *promotioninterface.Adapter
 	ReferencePrice  *referencepriceinterface.Adapter
 	SalesCommission *salescommissioninterface.Adapter
+	CommissionRule  *salescommissioninterface.CategoryCommissionRuleAdapter
 	StoreCategory   *storeallowedcategoryinterface.Adapter
 	WarehouseLink   *storewarehouselinkinterface.Adapter
 	Warehouse       *warehouseinterface.Adapter
@@ -57,6 +58,7 @@ func New(cfg Config) *http.ServeMux {
 	handler.NewPromotionHandler(cfg.Promotion).Register(mux)
 	handler.NewReferencePriceHandler(cfg.ReferencePrice).Register(mux)
 	handler.NewSalesCommissionHandler(cfg.SalesCommission).Register(mux)
+	handler.NewCategoryCommissionRuleHandler(cfg.CommissionRule).Register(mux)
 	handler.NewStoreAllowedCategoryHandler(cfg.StoreCategory).Register(mux)
 	handler.NewStoreWarehouseLinkHandler(cfg.WarehouseLink).Register(mux)
 	handler.NewWarehouseHandler(cfg.Warehouse).Register(mux)

@@ -1,26 +1,25 @@
 package salescommission_test
 
 import (
-	"errors"
 	"testing"
 
 	domainsalescommission "stock-service/internal/domain/sales_commission"
 	"stock-service/internal/application/sales_commission"
 )
 
-type createInMemoryRepo struct {
+type inMemorySalesCommissionRepo struct {
 	commissions map[int64]*domainsalescommission.SalesCommission
 	nextID      int64
 }
 
-func newCreateInMemoryRepo() *createInMemoryRepo {
-	return &createInMemoryRepo{
+func newInMemorySalesCommissionRepo() *inMemorySalesCommissionRepo {
+	return &inMemorySalesCommissionRepo{
 		commissions: make(map[int64]*domainsalescommission.SalesCommission),
 		nextID:      1,
 	}
 }
 
-func (r *createInMemoryRepo) Save(sc *domainsalescommission.SalesCommission) error {
+func (r *inMemorySalesCommissionRepo) Save(sc *domainsalescommission.SalesCommission) error {
 	if sc.ID == 0 {
 		sc.ID = r.nextID
 		r.nextID++
@@ -29,21 +28,56 @@ func (r *createInMemoryRepo) Save(sc *domainsalescommission.SalesCommission) err
 	return nil
 }
 
-func (r *createInMemoryRepo) FindByID(id int64) (*domainsalescommission.SalesCommission, error) {
-	sc, ok := r.commissions[id]
-	if !ok {
-		return nil, errors.New("not found")
-	}
-	return sc, nil
+func (r *inMemorySalesCommissionRepo) FindByID(id int64) (*domainsalescommission.SalesCommission, error) {
+	return r.commissions[id], nil
 }
 
-func (r *createInMemoryRepo) Delete(id int64) error {
+func (r *inMemorySalesCommissionRepo) FindByInventoryID(inventoryID int64) (*domainsalescommission.SalesCommission, error) {
+	for _, sc := range r.commissions {
+		if sc.InventoryID == inventoryID {
+			return sc, nil
+		}
+	}
+	return nil, nil
+}
+
+func (r *inMemorySalesCommissionRepo) FindAll(filter domainsalescommission.SalesCommissionFilter) ([]*domainsalescommission.SalesCommission, int, error) {
+	var matched []*domainsalescommission.SalesCommission
+	for _, sc := range r.commissions {
+		if filter.InventoryID != nil && sc.InventoryID != *filter.InventoryID {
+			continue
+		}
+		if filter.SaleModel != nil && string(sc.SaleModel) != *filter.SaleModel {
+			continue
+		}
+		matched = append(matched, sc)
+	}
+	total := len(matched)
+	page, limit := filter.Page, filter.Limit
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	start := (page - 1) * limit
+	if start >= len(matched) {
+		return nil, total, nil
+	}
+	end := start + limit
+	if end > len(matched) {
+		end = len(matched)
+	}
+	return matched[start:end], total, nil
+}
+
+func (r *inMemorySalesCommissionRepo) Delete(id int64) error {
 	delete(r.commissions, id)
 	return nil
 }
 
 func TestCreateSalesCommission_Success(t *testing.T) {
-	repo := newCreateInMemoryRepo()
+	repo := newInMemorySalesCommissionRepo()
 	uc := salescommission.NewCreateSalesCommissionUseCase(repo)
 
 	sc, err := uc.Execute(10, 20, domainsalescommission.SaleModelRetail, 5.0, 100.0)
@@ -68,7 +102,7 @@ func TestCreateSalesCommission_Success(t *testing.T) {
 }
 
 func TestCreateSalesCommission_InvalidRatePercent_ReturnsError(t *testing.T) {
-	repo := newCreateInMemoryRepo()
+	repo := newInMemorySalesCommissionRepo()
 	uc := salescommission.NewCreateSalesCommissionUseCase(repo)
 
 	_, err := uc.Execute(1, 1, domainsalescommission.SaleModelRetail, 150, 100)
@@ -78,7 +112,7 @@ func TestCreateSalesCommission_InvalidRatePercent_ReturnsError(t *testing.T) {
 }
 
 func TestCreateSalesCommission_InvalidMinPrice_ReturnsError(t *testing.T) {
-	repo := newCreateInMemoryRepo()
+	repo := newInMemorySalesCommissionRepo()
 	uc := salescommission.NewCreateSalesCommissionUseCase(repo)
 
 	_, err := uc.Execute(1, 1, domainsalescommission.SaleModelRetail, 5, 0)
