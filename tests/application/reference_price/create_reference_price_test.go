@@ -1,7 +1,6 @@
 package referenceprice_test
 
 import (
-	"errors"
 	"testing"
 
 	referencepriceapp "stock-service/internal/application/reference_price"
@@ -32,9 +31,48 @@ func (r *inMemoryReferencePriceRepo) Save(rp *referenceprice.ReferencePrice) err
 func (r *inMemoryReferencePriceRepo) FindByID(id int64) (*referenceprice.ReferencePrice, error) {
 	rp, ok := r.prices[id]
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, nil
 	}
 	return rp, nil
+}
+
+func (r *inMemoryReferencePriceRepo) FindByProductID(productID int32) (*referenceprice.ReferencePrice, error) {
+	for _, rp := range r.prices {
+		if rp.ProductID == productID {
+			return rp, nil
+		}
+	}
+	return nil, nil
+}
+
+func (r *inMemoryReferencePriceRepo) FindAll(filter referenceprice.ReferencePriceFilter) ([]*referenceprice.ReferencePrice, int, error) {
+	var matched []*referenceprice.ReferencePrice
+	for _, rp := range r.prices {
+		if filter.ProductID != nil && rp.ProductID != *filter.ProductID {
+			continue
+		}
+		if filter.Source != nil && rp.Source != *filter.Source {
+			continue
+		}
+		matched = append(matched, rp)
+	}
+	total := len(matched)
+	page, limit := filter.Page, filter.Limit
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	start := (page - 1) * limit
+	if start >= len(matched) {
+		return nil, total, nil
+	}
+	end := start + limit
+	if end > len(matched) {
+		end = len(matched)
+	}
+	return matched[start:end], total, nil
 }
 
 func (r *inMemoryReferencePriceRepo) Delete(id int64) error {

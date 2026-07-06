@@ -890,6 +890,105 @@ paths:
                 $ref: "#/components/schemas/ReferencePriceResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+    get:
+      summary: List/filter reference prices
+      tags: [Reference Price]
+      parameters:
+        - name: product_id
+          in: query
+          schema: { type: integer, format: int32 }
+        - name: source
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferencePriceListResponse"
+
+  /api/v1/reference-prices/{id}:
+    get:
+      summary: Get reference price by ID
+      tags: [Reference Price]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferencePriceResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a reference price
+      tags: [Reference Price]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "deleted" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/reference-prices/by-product/{productId}:
+    get:
+      summary: Get reference price by product ID
+      tags: [Reference Price]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: integer, format: int32 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferencePriceResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/reference-prices/by-product/{productId}/validate:
+    get:
+      summary: Compare reference price with inventory base price for validation
+      tags: [Reference Price]
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: integer, format: int32 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferencePriceValidationResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/sales-commissions:
     post:
@@ -1420,20 +1519,74 @@ components:
     ReferencePriceResponse:
       type: object
       properties:
-        ID:
+        id:
           type: integer
           format: int64
-        ProductID:
+        product_id:
           type: integer
           format: int32
-        Price:
+        price:
           type: number
           format: double
-        Source:
+        source:
           type: string
-        CreatedAt:
+        created_at:
           type: string
           format: date-time
+
+    ReferencePriceListResponse:
+      type: object
+      properties:
+        reference_prices:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int64
+              product_id:
+                type: integer
+                format: int32
+              price:
+                type: number
+                format: double
+              source:
+                type: string
+              created_at:
+                type: string
+                format: date-time
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    ReferencePriceValidationResponse:
+      type: object
+      properties:
+        product_id:
+          type: integer
+          format: int32
+        reference_price_id:
+          type: integer
+          format: int64
+        reference_price:
+          type: number
+          format: double
+        source:
+          type: string
+        inventory_count:
+          type: integer
+        base_prices:
+          type: array
+          items:
+            type: number
+            format: double
+        comparison:
+          type: string
+          enum: [within_range, moderately_out_of_range, far_out_of_range, no_inventory]
 
     SalesCommissionResponse:
       type: object

@@ -528,27 +528,61 @@
 |---|---|
 | `NewReferencePrice(productID, price, source)` | ✅ validates price > 0 |
 
+**Repository** (`internal/domain/reference_price/repository.go`)
+
+| Method | Status |
+|---|---|
+| `Save(rp)` | ✅ |
+| `FindByID(id)` | ✅ |
+| `FindByProductID(productID)` | ✅ |
+| `FindAll(filter)` | ✅ with pagination + filter by `ProductID`, `Source` |
+| `Delete(id)` | ✅ |
+
 **Use cases**
 
 | Use Case | Signature | Status |
 |---|---|---|
 | CreateReferencePrice | `Execute(productID int32, price float64, source string) (*ReferencePrice, error)` | ✅ |
+| GetReferencePrice | `Execute(input)` | ✅ |
+| GetByProductReferencePrice | `Execute(input)` | ✅ |
+| ListReferencePrices | `Execute(input)` | ✅ with pagination + filter by ProductID, Source |
+| DeleteReferencePrice | `Execute(input)` | ✅ validates existence before delete |
+| ValidateReferencePrice | `Execute(input)` | ✅ cross-domain: compares ref price vs inventory BasePrice, returns comparison category |
+
+**Compare with inventory base price for validation** (cross-domain use case)
+
+| Aspect | Detail |
+|---|---|
+| Package | `internal/application/reference_price/validate_reference_price.go` |
+| Signature | `Execute(input) (*ReferencePriceValidation, error)` |
+| Dependencies | `reference_price.Repository` + `inventory.Repository` |
+| Logic | Finds ref price by product ID → finds inventory items with same ProductID → compares ref price vs avg base price → returns `within_range`, `moderately_out_of_range`, `far_out_of_range`, or `no_inventory` |
+| Thresholds | ≤20% diff → `within_range`; ≤50% → `moderately_out_of_range`; >50% → `far_out_of_range` |
 
 **HTTP endpoints**
 
 | Route | Method | Status |
 |---|---|---|
 | `/api/v1/reference-prices` | POST | ✅ |
+| `/api/v1/reference-prices` | GET | ✅ list/filter (product_id, source, page, limit) |
+| `/api/v1/reference-prices/{id}` | GET | ✅ get by ID |
+| `/api/v1/reference-prices/{id}` | DELETE | ✅ |
+| `/api/v1/reference-prices/by-product/{productId}` | GET | ✅ get by product |
+| `/api/v1/reference-prices/by-product/{productId}/validate` | GET | ✅ compare with inventory base price |
 
-**Missing ReferencePrice features**
+**Test coverage**
 
-| Feature | Status |
-|---|---|
-| Get reference price by ID | ❌ |
-| Get reference price by product | ❌ |
-| List/filter reference prices | ❌ |
-| Delete reference price | ❌ |
-| Compare with inventory base price for validation | ❌ |
+| Layer | File | Tests |
+|---|---|---|
+| Entity | `tests/entity/reference_price/reference_price_test.go` | 3 |
+| Application | `tests/application/reference_price/create_reference_price_test.go` | 3 |
+| Application | `tests/application/reference_price/get_reference_price_test.go` | 4 (get by ID + by product) |
+| Application | `tests/application/reference_price/list_reference_prices_test.go` | 4 (empty, all, filter, pagination) |
+| Application | `tests/application/reference_price/delete_reference_price_test.go` | 2 |
+| Application | `tests/application/reference_price/validate_reference_price_test.go` | 3 |
+| Adapter | `tests/interface/reference_price/adapter_test.go` | 10 |
+| HTTP Handler | `tests/interface/http/reference_price/handler_test.go` | 10 |
+| **Total** | | **39** |
 
 ---
 

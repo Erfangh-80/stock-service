@@ -162,6 +162,11 @@ func main() {
 
 	refPriceAdapter := referencepriceinterface.NewAdapter(
 		appreferenceprice.NewCreateReferencePriceUseCase(refPriceRepo),
+		appreferenceprice.NewGetReferencePriceUseCase(refPriceRepo),
+		appreferenceprice.NewGetByProductReferencePriceUseCase(refPriceRepo),
+		appreferenceprice.NewListReferencePricesUseCase(refPriceRepo),
+		appreferenceprice.NewDeleteReferencePriceUseCase(refPriceRepo),
+		appreferenceprice.NewValidateReferencePriceUseCase(refPriceRepo, inventoryRepo),
 	)
 
 	salesCommAdapter := salescommissioninterface.NewAdapter(
