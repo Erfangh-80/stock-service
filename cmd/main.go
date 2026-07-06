@@ -57,7 +57,6 @@ func main() {
 	storeCatRepo := memory.NewStoreCategoryRepository()
 	warehouseLinkRepo := memory.NewWarehouseLinkRepository()
 	productRepo := memory.NewProductRepository()
-	memory.SeedProducts(productRepo)
 	productImageRepo := memory.NewProductImageRepository()
 	productTypeRepo := memory.NewProductTypeRepository()
 	productAttrRepo := memory.NewProductAttributeRepository()
@@ -218,6 +217,21 @@ func main() {
 	updateVisUC := appwarehouse.NewUpdateVisibilityUseCase(warehouseRepo)
 	updateContUC := appwarehouse.NewUpdateContactUseCase(warehouseRepo)
 	updateWHUC := appwarehouse.NewUpdateWarehouseUseCase(warehouseRepo)
+
+	memory.SeedAll(
+		brandRepo,
+		categoryRepo,
+		storeRepo,
+		warehouseRepo,
+		productRepo,
+		inventoryRepo,
+		promotionRepo,
+		refPriceRepo,
+		salesCommRepo,
+		catCommRuleRepo,
+		storeCatRepo,
+		warehouseLinkRepo,
+	)
 
 	warehouseAdapter := warehouseinterface.NewAdapter(
 		createWHUC,
