@@ -425,11 +425,24 @@
 |---|---|---|
 | `ID` | `int64` | ✅ |
 | `Title` | `string` | ✅ |
-| `RequiresApproval` | `bool` | ✅ (stored, unused) |
-| `StartAt` | `*time.Time` | ✅ (stored, unused) |
-| `EndAt` | `*time.Time` | ✅ (stored, unused) |
-| `IsCountdown` | `bool` | ✅ (stored, unused) |
-| `ExpireSaleWithPromotion` | `bool` | ✅ (stored, unused) |
+| `DiscountType` | `DiscountType` (percentage/fixed_amount) | ✅ |
+| `DiscountValue` | `float64` | ✅ |
+| `MinPurchase` | `*float64` | ✅ |
+| `CouponCode` | `*string` | ✅ |
+| `UsageLimit` | `*int` | ✅ |
+| `UsedCount` | `int` | ✅ |
+| `MaxDiscountAmount` | `*float64` | ✅ percentage cap |
+| `Budget` | `*float64` | ✅ |
+| `BudgetSpent` | `float64` | ✅ |
+| `EligibleStoreIDs` | `[]int64` | ✅ |
+| `EligibleCategoryIDs` | `[]int64` | ✅ |
+| `EligibleProductIDs` | `[]int32` | ✅ |
+| `EligibleUserIDs` | `[]int64` | ✅ |
+| `RequiresApproval` | `bool` | ✅ |
+| `StartAt` | `*time.Time` | ✅ |
+| `EndAt` | `*time.Time` | ✅ |
+| `IsCountdown` | `bool` | ✅ |
+| `ExpireSaleWithPromotion` | `bool` | ✅ |
 | `Status` | `PromotionStatus` (inactive/active) | ✅ |
 | `CreatedAt` | `time.Time` | ✅ |
 
@@ -437,18 +450,31 @@
 
 | Method | Status |
 |---|---|
-| `NewPromotion(title)` | ✅ validates title |
+| `NewPromotion(input)` | ✅ validates title, discount type/value, dates, coupon code |
+| `Update(input)` | ✅ partial update of any field with validation |
 | `Activate()` | ✅ status → active |
 | `Deactivate()` | ✅ status → inactive |
-
-**⚠️ Known gap:** The entity stores no discount type/value (% off, fixed amount, BOGO). Discounts live externally on `Inventory.FinalPrice`.
+| `IsActive()` | ✅ |
+| `IsExpired()` | ✅ checks EndAt |
+| `IsScheduled()` | ✅ checks StartAt |
+| `CanApply()` | ✅ active + not expired + within usage limit + within budget |
+| `RecordUsage()` | ✅ increments UsedCount |
+| `SpendBudget(amount)` | ✅ increments BudgetSpent |
+| `CalculateDiscountPrice(basePrice)` | ✅ percentage (with optional cap) / fixed amount / min purchase |
+| `IsEligibleForStore(id)` | ✅ empty list = no restriction |
+| `IsEligibleForCategory(id)` | ✅ empty list = no restriction |
+| `IsEligibleForProduct(id)` | ✅ empty list = no restriction |
+| `IsEligibleForUser(id)` | ✅ empty list = no restriction |
 
 **Use cases**
 
 | Use Case | Signature | Status |
 |---|---|---|
-| CreatePromotion | `Execute(title string) (*Promotion, error)` | ✅ |
+| CreatePromotion | `Execute(CreatePromotionInput) (*Promotion, error)` | ✅ full input with discount rules, eligibility, budget, schedule |
 | GetPromotion | `Execute(GetPromotionInput) (*Promotion, error)` | ✅ |
+| UpdatePromotion | `Execute(UpdatePromotionInput) (*Promotion, error)` | ✅ partial update |
+| DeletePromotion | `Execute(DeletePromotionInput) error` | ✅ |
+| ListPromotions | `Execute(ListPromotionsInput) (*ListPromotionsOutput, error)` | ✅ by status, discount type, search; paginated |
 | ActivatePromotion | `Execute(id int64) error` | ✅ |
 | DeactivatePromotion | `Execute(id int64) error` | ✅ |
 
@@ -457,22 +483,30 @@
 | Route | Method | Status |
 |---|---|---|
 | `/api/v1/promotions` | POST | ✅ |
+| `/api/v1/promotions` | GET | ✅ list (status, discount_type, search, page, limit) |
 | `/api/v1/promotions/{id}` | GET | ✅ |
+| `/api/v1/promotions/{id}` | PUT | ✅ update |
+| `/api/v1/promotions/{id}` | DELETE | ✅ |
 | `/api/v1/promotions/{id}/activate` | POST | ✅ |
 | `/api/v1/promotions/{id}/deactivate` | POST | ✅ |
+
+**Inventory auto-apply integration**
+
+| Feature | Status |
+|---|---|
+| ApplyPromotion validates promotion exists, active, not expired, within budget/limit | ✅ |
+| Auto-calculates FinalPrice from promotion discount rules when input is zero | ✅ |
+| Checks store and product eligibility before applying | ✅ |
+| Records usage count and budget spent on the promotion | ✅ |
 
 **Missing Promotion features**
 
 | Feature | Status |
 |---|---|
-| Discount rule fields (percentage, fixed amount, minimum purchase, coupon code) | ❌ |
-| Promotion → Inventory automatic application | ❌ |
-| Schedule validation (start < end, not expired) | ❌ |
-| List/filter promotions | ❌ |
-| Update promotion | ❌ |
-| Delete promotion | ❌ |
-| Promotion eligibility rules (per category, per store, per user) | ❌ |
-| Budget/cap per promotion | ❌ |
+| BOGO (buy one get one) discount type | ❌ |
+| Tiered discount rules (e.g. 10% over $100, 15% over $200) | ❌ |
+| Automatic promotion application on inventory creation | ❌ |
+| Category and user eligibility checked during apply (stored but not validated) | 🔶 |
 
 ---
 
@@ -737,7 +771,8 @@
 | **Brand entity** — referenced via `BrandID` in Product | ✅ |
 | **Database** — all repos are in-memory, no PostgreSQL implementation | ❌ |
 | **Commission calculation** — rate stored but never computed | ❌ |
-| **Promotion discount rules** — type/value fields missing from entity | ❌ |
+| **Promotion usage tracking** — UsedCount and BudgetSpent tracked on apply | ✅ |
+| **Promotion discount rules** — percentage, fixed amount, coupon, budget, eligibility | ✅ |
 | **Global search** — no product search by title_fa/title_en | ❌ |
 | **Validation on missing reference entities** — no FK integrity check (e.g., product must have a valid brand) | ❌ |
 
@@ -748,7 +783,7 @@
 | Package | Files | Tests | Status |
 |---|---|---|---|---|---|
 | `tests/entity/*` | 8 files | Creation, validation errors, state transitions | ✅ |
-| `tests/application/*` | 43 files | Every use case (success + error) | ✅ |
+| `tests/application/*` | 47 files | Every use case (success + error) | ✅ |
 | `tests/interface/*` | 18 files | Every adapter method (success + error mapping) | ✅ |
 | `tests/interface/http/*` | 9 files | Every endpoint (success + invalid JSON, invalid ID, errors) | ✅ |
-| **Total** | **69 files** | **35 test suites** | **✅ all pass** |
+| **Total** | **73 files** | **35 test suites** | **✅ all pass** |
