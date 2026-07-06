@@ -14,3 +14,8 @@ type UpdateWarehouseContactRequest struct {
 	ContactPhone     *string `json:"contact_phone"`
 	CollectionMethod string  `json:"collection_method"`
 }
+
+type UpdateWarehouseRequest struct {
+	Name      *string `json:"warehouse_name,omitempty"`
+	AddressID *int64  `json:"address_id,omitempty"`
+}

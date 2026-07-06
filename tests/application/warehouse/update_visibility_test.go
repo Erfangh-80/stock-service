@@ -37,6 +37,14 @@ func (r *updateVisibilityInMemoryRepo) FindByID(id int64) (*domainwarehouse.Ware
 	return w, nil
 }
 
+func (r *updateVisibilityInMemoryRepo) FindAll(filter domainwarehouse.WarehouseFilter) ([]*domainwarehouse.Warehouse, int, error) {
+	var result []*domainwarehouse.Warehouse
+	for _, w := range r.warehouses {
+		result = append(result, w)
+	}
+	return result, len(result), nil
+}
+
 func (r *updateVisibilityInMemoryRepo) Delete(id int64) error {
 	delete(r.warehouses, id)
 	return nil

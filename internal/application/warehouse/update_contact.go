@@ -17,8 +17,18 @@ func (uc *UpdateContactUseCase) Execute(warehouseID int64, phone, contactPhone *
 	if err != nil {
 		return err
 	}
+	if w == nil {
+		return warehouse.ErrWarehouseNotFound
+	}
+	if collectionMethod != "" {
+		if err := warehouse.ValidateCollectionMethod(collectionMethod); err != nil {
+			return err
+		}
+	}
 	w.UpdatePhone(phone)
 	w.UpdateContactPhone(contactPhone)
-	w.UpdateCollectionMethod(collectionMethod)
+	if collectionMethod != "" {
+		w.UpdateCollectionMethod(collectionMethod)
+	}
 	return uc.repo.Save(w)
 }

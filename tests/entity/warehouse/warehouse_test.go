@@ -83,3 +83,63 @@ func TestUpdateCollectionMethod_SetsCollectionMethod(t *testing.T) {
 		t.Errorf("expected CollectionMethod %q, got %q", "pickup", w.CollectionMethod)
 	}
 }
+
+func TestUpdateWarehouseName_Success(t *testing.T) {
+	w, _ := warehouse.NewWarehouse(1, "Original")
+	err := w.UpdateWarehouseName("Updated")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if w.WarehouseName != "Updated" {
+		t.Errorf("expected WarehouseName %q, got %q", "Updated", w.WarehouseName)
+	}
+}
+
+func TestUpdateWarehouseName_Empty_ReturnsError(t *testing.T) {
+	w, _ := warehouse.NewWarehouse(1, "Original")
+	err := w.UpdateWarehouseName("")
+	if err != warehouse.ErrWarehouseNameRequired {
+		t.Errorf("expected %v, got %v", warehouse.ErrWarehouseNameRequired, err)
+	}
+}
+
+func TestUpdateAddressID_Success(t *testing.T) {
+	w, _ := warehouse.NewWarehouse(1, "Test")
+	err := w.UpdateAddressID(100)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if w.AddressID == nil || *w.AddressID != 100 {
+		t.Errorf("expected AddressID 100, got %v", w.AddressID)
+	}
+}
+
+func TestUpdateAddressID_Zero_ReturnsError(t *testing.T) {
+	w, _ := warehouse.NewWarehouse(1, "Test")
+	err := w.UpdateAddressID(0)
+	if err != warehouse.ErrWarehouseAddressIDNotPositive {
+		t.Errorf("expected %v, got %v", warehouse.ErrWarehouseAddressIDNotPositive, err)
+	}
+}
+
+func TestValidateCollectionMethod_Valid(t *testing.T) {
+	err := warehouse.ValidateCollectionMethod("pickup")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	err = warehouse.ValidateCollectionMethod("delivery")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	err = warehouse.ValidateCollectionMethod("both")
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
+func TestValidateCollectionMethod_Invalid_ReturnsError(t *testing.T) {
+	err := warehouse.ValidateCollectionMethod("invalid")
+	if err != warehouse.ErrInvalidCollectionMethod {
+		t.Errorf("expected %v, got %v", warehouse.ErrInvalidCollectionMethod, err)
+	}
+}

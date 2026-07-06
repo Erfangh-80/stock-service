@@ -37,6 +37,14 @@ func (r *updateContactInMemoryRepo) FindByID(id int64) (*domainwarehouse.Warehou
 	return w, nil
 }
 
+func (r *updateContactInMemoryRepo) FindAll(filter domainwarehouse.WarehouseFilter) ([]*domainwarehouse.Warehouse, int, error) {
+	var result []*domainwarehouse.Warehouse
+	for _, w := range r.warehouses {
+		result = append(result, w)
+	}
+	return result, len(result), nil
+}
+
 func (r *updateContactInMemoryRepo) Delete(id int64) error {
 	delete(r.warehouses, id)
 	return nil

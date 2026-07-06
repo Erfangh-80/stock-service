@@ -17,6 +17,9 @@ func (uc *UpdateVisibilityUseCase) Execute(warehouseID int64, isPublic bool) err
 	if err != nil {
 		return err
 	}
+	if w == nil {
+		return warehouse.ErrWarehouseNotFound
+	}
 	if isPublic {
 		w.MakePublic()
 	} else {

@@ -884,7 +884,7 @@
 | `Phone` | `*string` | ✅ |
 | `ContactPhone` | `*string` | ✅ |
 | `IsPublic` | `bool` | ✅ |
-| `CollectionMethod` | `string` | ✅ |
+| `CollectionMethod` | `string` | ✅ (validated against enum) |
 | `CreatedAt` | `time.Time` | ✅ |
 
 **Domain methods**
@@ -896,32 +896,70 @@
 | `UpdatePhone(phone)` | ✅ |
 | `UpdateContactPhone(phone)` | ✅ |
 | `UpdateCollectionMethod(method)` | ✅ |
+| `UpdateWarehouseName(name)` | ✅ validates name |
+| `UpdateAddressID(id)` | ✅ validates positive |
+
+**Validators & errors**
+
+| Validator / Error | Status |
+|---|---|
+| `ValidateWarehouseName` | ✅ |
+| `ValidateCollectionMethod` | ✅ pickup, delivery, both |
+| `ValidateAddressID` | ✅ must be positive |
+| `ErrWarehouseNameRequired` | ✅ |
+| `ErrWarehouseNameTooLong` | ✅ |
+| `ErrWarehouseNotFound` | ✅ |
+| `ErrInvalidCollectionMethod` | ✅ |
+| `ErrWarehouseAddressIDNotPositive` | ✅ |
+
+**Repository** (`internal/domain/warehouse/repository.go`)
+
+| Method | Status |
+|---|---|
+| `Save(w)` | ✅ |
+| `FindByID(id)` | ✅ |
+| `FindAll(filter)` | ✅ with pagination + filter by `CreatedByUserID`, `IsPublic` |
+| `Delete(id)` | ✅ |
 
 **Use cases**
 
 | Use Case | Signature | Status |
 |---|---|---|
 | CreateWarehouse | `Execute(createdByUserID, warehouseName) (*Warehouse, error)` | ✅ |
-| UpdateVisibility | `Execute(id, isPublic) error` | ✅ |
-| UpdateContact | `Execute(id, phone, contactPhone, collectionMethod) error` | ✅ |
+| GetWarehouse | `Execute(id) (*Warehouse, error)` | ✅ validates existence |
+| ListWarehouses | `Execute(input) (*ListWarehousesOutput, error)` | ✅ by user, by visibility; paginated |
+| UpdateWarehouse | `Execute(input) (*Warehouse, error)` | ✅ name and/or address |
+| DeleteWarehouse | `Execute(id) error` | ✅ validates existence before delete |
+| UpdateVisibility | `Execute(id, isPublic) error` | ✅ validates existence |
+| UpdateContact | `Execute(id, phone, contactPhone, collectionMethod) error` | ✅ validates existence + collection method |
 
 **HTTP endpoints**
 
 | Route | Method | Status |
 |---|---|---|
 | `/api/v1/warehouses` | POST | ✅ |
+| `/api/v1/warehouses` | GET | ✅ list/filter (created_by_user_id, is_public, page, limit) |
+| `/api/v1/warehouses/{id}` | GET | ✅ get by ID |
+| `/api/v1/warehouses/{id}` | PUT | ✅ update name/address |
+| `/api/v1/warehouses/{id}` | DELETE | ✅ |
 | `/api/v1/warehouses/{id}/visibility` | PUT | ✅ |
 | `/api/v1/warehouses/{id}/contact` | PUT | ✅ |
 
-**Missing Warehouse features**
+**Test coverage**
 
-| Feature | Status |
-|---|---|
-| Get warehouse by ID | ❌ |
-| List warehouses (by user, by visibility) | ❌ |
-| Delete warehouse | ❌ |
-| Update warehouse name, address | ❌ |
-| Validate collection method enum values | ❌ |
+| Layer | File | Tests |
+|---|---|---|
+| Entity | `tests/entity/warehouse/warehouse_test.go` | 12 |
+| Application | `tests/application/warehouse/create_warehouse_test.go` | 2 |
+| Application | `tests/application/warehouse/get_warehouse_test.go` | — |
+| Application | `tests/application/warehouse/list_warehouses_test.go` | — |
+| Application | `tests/application/warehouse/delete_warehouse_test.go` | — |
+| Application | `tests/application/warehouse/update_warehouse_test.go` | — |
+| Application | `tests/application/warehouse/update_contact_test.go` | 2 |
+| Application | `tests/application/warehouse/update_visibility_test.go` | 3 |
+| Adapter | `tests/interface/warehouse/adapter_test.go` | 12 |
+| HTTP Handler | `tests/interface/http/warehouse/handler_test.go` | 13 |
+| **Total** | | **~44** |
 
 ---
 
@@ -930,7 +968,7 @@
 | Feature | Status |
 |---|---|
 | **Auth / permissions** — any caller can call any endpoint | ❌ |
-| **List/search endpoints** — Store, Inventory, Product, Brand, Category, Reference Price, Sales Commission, Store Allowed Category have list with filtering + pagination | 🔶 (8/9 domains) |
+| **List/search endpoints** — Store, Inventory, Product, Brand, Category, Reference Price, Sales Commission, Store Allowed Category, Warehouse have list with filtering + pagination | ✅ (9/9 domains) |
 | **Pagination** — Store, Inventory, Product, Reference Price, Sales Commission, Store Allowed Category use cases support pagination | 🔶 |
 | **Order / checkout** — entirely absent | ❌ |
 | **User entity** — referenced via `UserID`, `OwnerID`, `CreatedByUserID` but no User domain exists | ❌ |

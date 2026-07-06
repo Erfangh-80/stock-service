@@ -23,7 +23,6 @@ import (
 
 	"stock-service/internal/infrastructure/memory"
 
-	warehousedomain "stock-service/internal/domain/warehouse"
 
 	brandinterface "stock-service/internal/interface/brand"
 	categoryinterface "stock-service/internal/interface/category"
@@ -213,13 +212,21 @@ func main() {
 	)
 
 	createWHUC := appwarehouse.NewCreateWarehouseUseCase(warehouseRepo)
+	getWHUC := appwarehouse.NewGetWarehouseUseCase(warehouseRepo)
+	listWHUC := appwarehouse.NewListWarehousesUseCase(warehouseRepo)
+	delWHUC := appwarehouse.NewDeleteWarehouseUseCase(warehouseRepo)
 	updateVisUC := appwarehouse.NewUpdateVisibilityUseCase(warehouseRepo)
 	updateContUC := appwarehouse.NewUpdateContactUseCase(warehouseRepo)
+	updateWHUC := appwarehouse.NewUpdateWarehouseUseCase(warehouseRepo)
 
 	warehouseAdapter := warehouseinterface.NewAdapter(
-		&createWarehouseAdapter{inner: createWHUC},
-		&updateVisibilityAdapter{uc: updateVisUC, repo: warehouseRepo},
-		&updateContactAdapter{uc: updateContUC, repo: warehouseRepo},
+		createWHUC,
+		getWHUC,
+		listWHUC,
+		delWHUC,
+		updateVisUC,
+		updateContUC,
+		updateWHUC,
 	)
 
 	mux := router.New(router.Config{
@@ -246,36 +253,6 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
-type createWarehouseAdapter struct {
-	inner *appwarehouse.CreateWarehouseUseCase
-}
 
-func (a *createWarehouseAdapter) Execute(input warehouseinterface.CreateWarehouseInput) (*warehousedomain.Warehouse, error) {
-	return a.inner.Execute(input.CreatedByUserID, input.WarehouseName)
-}
-
-type updateVisibilityAdapter struct {
-	uc   *appwarehouse.UpdateVisibilityUseCase
-	repo *memory.WarehouseRepository
-}
-
-func (a *updateVisibilityAdapter) Execute(input warehouseinterface.UpdateVisibilityInput) (*warehousedomain.Warehouse, error) {
-	if err := a.uc.Execute(input.WarehouseID, input.IsPublic); err != nil {
-		return nil, err
-	}
-	return a.repo.FindByID(input.WarehouseID)
-}
-
-type updateContactAdapter struct {
-	uc   *appwarehouse.UpdateContactUseCase
-	repo *memory.WarehouseRepository
-}
-
-func (a *updateContactAdapter) Execute(input warehouseinterface.UpdateContactInput) (*warehousedomain.Warehouse, error) {
-	if err := a.uc.Execute(input.WarehouseID, input.Phone, input.ContactPhone, input.CollectionMethod); err != nil {
-		return nil, err
-	}
-	return a.repo.FindByID(input.WarehouseID)
-}
 
 

@@ -1497,6 +1497,29 @@ paths:
                 $ref: "#/components/schemas/WarehouseLinkResponse"
 
   /api/v1/warehouses:
+    get:
+      summary: List warehouses
+      tags: [Warehouse]
+      parameters:
+        - name: created_by_user_id
+          in: query
+          schema: { type: integer, format: int64 }
+        - name: is_public
+          in: query
+          schema: { type: boolean }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseListResponse"
     post:
       summary: Create a warehouse
       tags: [Warehouse]
@@ -1517,6 +1540,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WarehouseResponse"
+
+  /api/v1/warehouses/{id}:
+    get:
+      summary: Get a warehouse by ID
+      tags: [Warehouse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update warehouse name and/or address
+      tags: [Warehouse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                warehouse_name: { type: string }
+                address_id:     { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a warehouse
+      tags: [Warehouse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "204":
+          description: No Content
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/warehouses/{id}/visibility:
     put:
@@ -2142,7 +2223,34 @@ components:
           format: int64
         warehouse_name:
           type: string
+        address_id:
+          type: integer
+          format: int64
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        contact_phone:
+          type: string
+          nullable: true
         is_public:
           type: boolean
         collection_method:
           type: string
+        created_at:
+          type: string
+          format: date-time
+
+    WarehouseListResponse:
+      type: object
+      properties:
+        warehouses:
+          type: array
+          items:
+            $ref: "#/components/schemas/WarehouseResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer

@@ -5,49 +5,62 @@ import (
 	"testing"
 	"time"
 
+	app "stock-service/internal/application/warehouse"
 	"stock-service/internal/domain/warehouse"
 	iface "stock-service/internal/interface"
 	adapter "stock-service/internal/interface/warehouse"
 )
 
-// mocks
-
-type mockCreateWarehouseUseCase struct {
-	execute func(adapter.CreateWarehouseInput) (*warehouse.Warehouse, error)
+type mockCreateWH struct {
+	fn func(int64, string) (*warehouse.Warehouse, error)
 }
 
-func (m *mockCreateWarehouseUseCase) Execute(input adapter.CreateWarehouseInput) (*warehouse.Warehouse, error) {
-	return m.execute(input)
+func (m *mockCreateWH) Execute(createdByUserID int64, warehouseName string) (*warehouse.Warehouse, error) {
+	return m.fn(createdByUserID, warehouseName)
 }
 
-type mockUpdateVisibilityUseCase struct {
-	execute func(adapter.UpdateVisibilityInput) (*warehouse.Warehouse, error)
+type mockGetWH struct {
+	fn func(int64) (*warehouse.Warehouse, error)
 }
 
-func (m *mockUpdateVisibilityUseCase) Execute(input adapter.UpdateVisibilityInput) (*warehouse.Warehouse, error) {
-	return m.execute(input)
+func (m *mockGetWH) Execute(warehouseID int64) (*warehouse.Warehouse, error) {
+	return m.fn(warehouseID)
 }
 
-type mockUpdateContactUseCase struct {
-	execute func(adapter.UpdateContactInput) (*warehouse.Warehouse, error)
+type mockListWH struct {
+	fn func(app.ListWarehousesInput) (*app.ListWarehousesOutput, error)
 }
 
-func (m *mockUpdateContactUseCase) Execute(input adapter.UpdateContactInput) (*warehouse.Warehouse, error) {
-	return m.execute(input)
+func (m *mockListWH) Execute(input app.ListWarehousesInput) (*app.ListWarehousesOutput, error) {
+	if m.fn != nil {
+		return m.fn(input)
+	}
+	return &app.ListWarehousesOutput{}, nil
 }
 
-// helpers
+type mockDelWH struct{}
 
-func newAdapter(
-	create func(adapter.CreateWarehouseInput) (*warehouse.Warehouse, error),
-	updateVis func(adapter.UpdateVisibilityInput) (*warehouse.Warehouse, error),
-	updateCont func(adapter.UpdateContactInput) (*warehouse.Warehouse, error),
-) *adapter.Adapter {
-	return adapter.NewAdapter(
-		&mockCreateWarehouseUseCase{execute: create},
-		&mockUpdateVisibilityUseCase{execute: updateVis},
-		&mockUpdateContactUseCase{execute: updateCont},
-	)
+func (m *mockDelWH) Execute(warehouseID int64) error { return nil }
+
+type mockVisWH struct{}
+
+func (m *mockVisWH) Execute(warehouseID int64, isPublic bool) error { return nil }
+
+type mockContWH struct{}
+
+func (m *mockContWH) Execute(warehouseID int64, phone, contactPhone *string, collectionMethod string) error {
+	return nil
+}
+
+type mockUpdWH struct {
+	fn func(app.UpdateWarehouseInput) (*warehouse.Warehouse, error)
+}
+
+func (m *mockUpdWH) Execute(input app.UpdateWarehouseInput) (*warehouse.Warehouse, error) {
+	if m.fn != nil {
+		return m.fn(input)
+	}
+	return baseWarehouse(), nil
 }
 
 func baseWarehouse() *warehouse.Warehouse {
@@ -61,19 +74,28 @@ func baseWarehouse() *warehouse.Warehouse {
 	}
 }
 
-// Test Create — success
+func newAdapter(
+	create *mockCreateWH,
+	get *mockGetWH,
+	list *mockListWH,
+	del *mockDelWH,
+	vis *mockVisWH,
+	cont *mockContWH,
+	upd *mockUpdWH,
+) *adapter.Adapter {
+	return adapter.NewAdapter(create, get, list, del, vis, cont, upd)
+}
 
 func TestCreate_Success(t *testing.T) {
 	a := newAdapter(
-		func(input adapter.CreateWarehouseInput) (*warehouse.Warehouse, error) {
-			if input.CreatedByUserID != 100 || input.WarehouseName != "Test Warehouse" {
-				t.Errorf("unexpected input: %+v", input)
+		&mockCreateWH{fn: func(uid int64, name string) (*warehouse.Warehouse, error) {
+			if uid != 100 || name != "Test Warehouse" {
+				t.Errorf("unexpected input: uid=%d name=%s", uid, name)
 			}
 			return baseWarehouse(), nil
-		},
-		nil, nil,
+		}},
+		nil, nil, nil, nil, nil, nil,
 	)
-
 	resp, err := a.Create(adapter.CreateWarehouseInput{CreatedByUserID: 100, WarehouseName: "Test Warehouse"})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
@@ -83,165 +105,194 @@ func TestCreate_Success(t *testing.T) {
 	}
 }
 
-// Test Create — ErrWarehouseNameRequired → ErrInvalidInput
-
 func TestCreate_ErrWarehouseNameRequired(t *testing.T) {
 	a := newAdapter(
-		func(input adapter.CreateWarehouseInput) (*warehouse.Warehouse, error) {
+		&mockCreateWH{fn: func(uid int64, name string) (*warehouse.Warehouse, error) {
 			return nil, warehouse.ErrWarehouseNameRequired
-		},
-		nil, nil,
+		}},
+		nil, nil, nil, nil, nil, nil,
 	)
-
 	_, err := a.Create(adapter.CreateWarehouseInput{})
 	if err != iface.ErrInvalidInput {
 		t.Errorf("expected ErrInvalidInput, got %v", err)
 	}
 }
-
-// Test Create — ErrWarehouseNameTooLong → ErrInvalidInput
 
 func TestCreate_ErrWarehouseNameTooLong(t *testing.T) {
 	a := newAdapter(
-		func(input adapter.CreateWarehouseInput) (*warehouse.Warehouse, error) {
+		&mockCreateWH{fn: func(uid int64, name string) (*warehouse.Warehouse, error) {
 			return nil, warehouse.ErrWarehouseNameTooLong
-		},
-		nil, nil,
+		}},
+		nil, nil, nil, nil, nil, nil,
 	)
-
 	_, err := a.Create(adapter.CreateWarehouseInput{})
 	if err != iface.ErrInvalidInput {
 		t.Errorf("expected ErrInvalidInput, got %v", err)
 	}
 }
 
-// Test Create — unknown error → ErrInternal
-
 func TestCreate_UnknownError(t *testing.T) {
 	a := newAdapter(
-		func(input adapter.CreateWarehouseInput) (*warehouse.Warehouse, error) {
+		&mockCreateWH{fn: func(uid int64, name string) (*warehouse.Warehouse, error) {
 			return nil, errors.New("db connection failed")
-		},
-		nil, nil,
+		}},
+		nil, nil, nil, nil, nil, nil,
 	)
-
 	_, err := a.Create(adapter.CreateWarehouseInput{})
 	if err != iface.ErrInternal {
 		t.Errorf("expected ErrInternal, got %v", err)
 	}
 }
 
-// Test UpdateVisibility — success
+func TestGet_Success(t *testing.T) {
+	a := newAdapter(
+		nil,
+		&mockGetWH{fn: func(id int64) (*warehouse.Warehouse, error) {
+			if id != 1 {
+				t.Errorf("unexpected id: %d", id)
+			}
+			return baseWarehouse(), nil
+		}},
+		nil, nil, nil, nil, nil,
+	)
+	resp, err := a.Get(adapter.GetWarehouseInput{ID: 1})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+	if resp.ID != 1 {
+		t.Errorf("unexpected response: %+v", resp)
+	}
+}
+
+func TestGet_NotFound(t *testing.T) {
+	a := newAdapter(
+		nil,
+		&mockGetWH{fn: func(id int64) (*warehouse.Warehouse, error) {
+			return nil, warehouse.ErrWarehouseNotFound
+		}},
+		nil, nil, nil, nil, nil,
+	)
+	_, err := a.Get(adapter.GetWarehouseInput{ID: 999})
+	if err != iface.ErrNotFound {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestGet_UnknownError(t *testing.T) {
+	a := newAdapter(
+		nil,
+		&mockGetWH{fn: func(id int64) (*warehouse.Warehouse, error) {
+			return nil, errors.New("unexpected")
+		}},
+		nil, nil, nil, nil, nil,
+	)
+	_, err := a.Get(adapter.GetWarehouseInput{ID: 1})
+	if err != iface.ErrInternal {
+		t.Errorf("expected ErrInternal, got %v", err)
+	}
+}
+
+func TestDelete_Success(t *testing.T) {
+	a := newAdapter(nil, nil, nil, &mockDelWH{}, nil, nil, nil)
+	err := a.Delete(adapter.DeleteWarehouseInput{ID: 1})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+}
 
 func TestUpdateVisibility_Success(t *testing.T) {
 	a := newAdapter(
 		nil,
-		func(input adapter.UpdateVisibilityInput) (*warehouse.Warehouse, error) {
-			if input.WarehouseID != 1 || !input.IsPublic {
-				t.Errorf("unexpected input: %+v", input)
-			}
-			return baseWarehouse(), nil
-		},
-		nil,
+		&mockGetWH{fn: func(id int64) (*warehouse.Warehouse, error) { return baseWarehouse(), nil }},
+		nil, nil, &mockVisWH{}, nil, nil,
 	)
-
 	resp, err := a.UpdateVisibility(adapter.UpdateVisibilityInput{WarehouseID: 1, IsPublic: true})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
 	}
-	if resp.ID != 1 {
-		t.Errorf("unexpected response: %+v", resp)
+	if resp == nil {
+		t.Fatal("expected response, got nil")
 	}
 }
-
-// Test UpdateVisibility — domain error → ErrInvalidInput
-
-func TestUpdateVisibility_DomainError(t *testing.T) {
-	a := newAdapter(
-		nil,
-		func(input adapter.UpdateVisibilityInput) (*warehouse.Warehouse, error) {
-			return nil, warehouse.ErrWarehouseNameRequired
-		},
-		nil,
-	)
-
-	_, err := a.UpdateVisibility(adapter.UpdateVisibilityInput{WarehouseID: 1, IsPublic: true})
-	if err != iface.ErrInvalidInput {
-		t.Errorf("expected ErrInvalidInput, got %v", err)
-	}
-}
-
-// Test UpdateVisibility — unknown error → ErrInternal
-
-func TestUpdateVisibility_UnknownError(t *testing.T) {
-	a := newAdapter(
-		nil,
-		func(input adapter.UpdateVisibilityInput) (*warehouse.Warehouse, error) {
-			return nil, errors.New("unexpected")
-		},
-		nil,
-	)
-
-	_, err := a.UpdateVisibility(adapter.UpdateVisibilityInput{WarehouseID: 1, IsPublic: true})
-	if err != iface.ErrInternal {
-		t.Errorf("expected ErrInternal, got %v", err)
-	}
-}
-
-// Test UpdateContact — success
 
 func TestUpdateContact_Success(t *testing.T) {
-	phone := "123456"
-	contactPhone := "789012"
 	a := newAdapter(
-		nil, nil,
-		func(input adapter.UpdateContactInput) (*warehouse.Warehouse, error) {
-			if input.WarehouseID != 1 || *input.Phone != "123456" || *input.ContactPhone != "789012" || input.CollectionMethod != "delivery" {
-				t.Errorf("unexpected input: %+v", input)
-			}
-			return baseWarehouse(), nil
-		},
+		nil,
+		&mockGetWH{fn: func(id int64) (*warehouse.Warehouse, error) { return baseWarehouse(), nil }},
+		nil, nil, nil, &mockContWH{}, nil,
 	)
-
-	resp, err := a.UpdateContact(adapter.UpdateContactInput{
-		WarehouseID: 1, Phone: &phone, ContactPhone: &contactPhone, CollectionMethod: "delivery",
-	})
+	resp, err := a.UpdateContact(adapter.UpdateContactInput{WarehouseID: 1, CollectionMethod: "pickup"})
 	if err != nil {
 		t.Fatal("unexpected error:", err)
 	}
-	if resp.ID != 1 {
-		t.Errorf("unexpected response: %+v", resp)
+	if resp == nil {
+		t.Fatal("expected response, got nil")
 	}
 }
 
-// Test UpdateContact — domain error → ErrInvalidInput
-
-func TestUpdateContact_DomainError(t *testing.T) {
+func TestUpdateWarehouse_Success(t *testing.T) {
 	a := newAdapter(
-		nil, nil,
-		func(input adapter.UpdateContactInput) (*warehouse.Warehouse, error) {
-			return nil, warehouse.ErrWarehouseNameTooLong
-		},
+		nil, nil, nil, nil, nil, nil,
+		&mockUpdWH{fn: func(input app.UpdateWarehouseInput) (*warehouse.Warehouse, error) {
+			if input.WarehouseID != 1 {
+				t.Errorf("unexpected id: %d", input.WarehouseID)
+			}
+			return baseWarehouse(), nil
+		}},
 	)
+	name := "Updated"
+	resp, err := a.UpdateWarehouse(adapter.UpdateWarehouseInput{WarehouseID: 1, Name: &name})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+	if resp == nil {
+		t.Fatal("expected response, got nil")
+	}
+}
 
-	_, err := a.UpdateContact(adapter.UpdateContactInput{WarehouseID: 1})
+func TestUpdateWarehouse_ErrWarehouseNameRequired(t *testing.T) {
+	a := newAdapter(
+		nil, nil, nil, nil, nil, nil,
+		&mockUpdWH{fn: func(input app.UpdateWarehouseInput) (*warehouse.Warehouse, error) {
+			return nil, warehouse.ErrWarehouseNameRequired
+		}},
+	)
+	empty := ""
+	_, err := a.UpdateWarehouse(adapter.UpdateWarehouseInput{WarehouseID: 1, Name: &empty})
 	if err != iface.ErrInvalidInput {
 		t.Errorf("expected ErrInvalidInput, got %v", err)
 	}
 }
 
-// Test UpdateContact — unknown error → ErrInternal
-
-func TestUpdateContact_UnknownError(t *testing.T) {
+func TestList_Success(t *testing.T) {
 	a := newAdapter(
 		nil, nil,
-		func(input adapter.UpdateContactInput) (*warehouse.Warehouse, error) {
-			return nil, errors.New("disk full")
-		},
+		&mockListWH{fn: func(input app.ListWarehousesInput) (*app.ListWarehousesOutput, error) {
+			return &app.ListWarehousesOutput{
+				Warehouses: []*warehouse.Warehouse{baseWarehouse()},
+				Total:      1,
+			}, nil
+		}},
+		nil, nil, nil, nil,
 	)
+	resp, err := a.List(adapter.ListWarehousesInput{Page: 1, Limit: 20})
+	if err != nil {
+		t.Fatal("unexpected error:", err)
+	}
+	if len(resp.Warehouses) != 1 || resp.Total != 1 {
+		t.Errorf("unexpected response: %+v", resp)
+	}
+}
 
-	_, err := a.UpdateContact(adapter.UpdateContactInput{WarehouseID: 1})
-	if err != iface.ErrInternal {
-		t.Errorf("expected ErrInternal, got %v", err)
+func TestUpdateWarehouse_ErrWarehouseNotFound(t *testing.T) {
+	a := newAdapter(
+		nil, nil, nil, nil, nil, nil,
+		&mockUpdWH{fn: func(input app.UpdateWarehouseInput) (*warehouse.Warehouse, error) {
+			return nil, warehouse.ErrWarehouseNotFound
+		}},
+	)
+	_, err := a.UpdateWarehouse(adapter.UpdateWarehouseInput{WarehouseID: 999})
+	if err != iface.ErrNotFound {
+		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }

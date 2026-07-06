@@ -45,3 +45,19 @@ func (w *Warehouse) UpdateContactPhone(phone *string) {
 func (w *Warehouse) UpdateCollectionMethod(method string) {
 	w.CollectionMethod = method
 }
+
+func (w *Warehouse) UpdateWarehouseName(name string) error {
+	if err := ValidateWarehouseName(name); err != nil {
+		return err
+	}
+	w.WarehouseName = name
+	return nil
+}
+
+func (w *Warehouse) UpdateAddressID(addressID int64) error {
+	if err := ValidateAddressID(addressID); err != nil {
+		return err
+	}
+	w.AddressID = &addressID
+	return nil
+}
