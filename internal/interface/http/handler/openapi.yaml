@@ -120,7 +120,9 @@ paths:
   /api/v1/inventory/{id}/promotion:
     post:
       summary: Apply a promotion to an inventory item
+      description: "**Role:** salesperson — applies an active promotion to an inventory listing"
       tags: [Inventory]
+      x-salesperson: true
       parameters:
         - name: id
           in: path
@@ -132,10 +134,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [promotion_id, final_price, start_at, end_at]
+              required: [promotion_id]
               properties:
                 promotion_id: { type: integer, format: int64 }
-                final_price:  { type: number, format: double }
+                final_price:  { type: number, format: double, description: "auto-calculated from promotion rules when omitted or zero" }
                 start_at:     { type: string, format: date-time }
                 end_at:       { type: string, format: date-time }
       responses:
@@ -151,7 +153,9 @@ paths:
           $ref: "#/components/responses/Conflict"
     delete:
       summary: Remove a promotion from an inventory item
+      description: "**Role:** salesperson — removes the active promotion from an inventory listing"
       tags: [Inventory]
+      x-salesperson: true
       parameters:
         - name: id
           in: path
@@ -704,16 +708,15 @@ paths:
   /api/v1/promotions:
     post:
       summary: Create a promotion
+      description: "**Role:** admin — creates a promotion with discount rules, eligibility, and budget"
       tags: [Promotion]
+      x-admin: true
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [title]
-              properties:
-                title: { type: string }
+              $ref: "#/components/schemas/CreatePromotionRequest"
       responses:
         "201":
           description: Created
@@ -723,11 +726,41 @@ paths:
                 $ref: "#/components/schemas/PromotionResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+    get:
+      summary: List promotions
+      description: "**Role:** admin — list and filter promotions"
+      tags: [Promotion]
+      x-admin: true
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, inactive] }
+        - name: discount_type
+          in: query
+          schema: { type: string, enum: [percentage, fixed_amount] }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromotionListResponse"
 
   /api/v1/promotions/{id}:
     get:
       summary: Get promotion by ID
+      description: "**Role:** admin — view a single promotion's details"
       tags: [Promotion]
+      x-admin: true
       parameters:
         - name: id
           in: path
@@ -742,11 +775,61 @@ paths:
                 $ref: "#/components/schemas/PromotionResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update a promotion
+      description: "**Role:** admin — partial update of a promotion's fields"
+      tags: [Promotion]
+      x-admin: true
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePromotionRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromotionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a promotion
+      description: "**Role:** admin — permanently removes a promotion"
+      tags: [Promotion]
+      x-admin: true
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "deleted" }
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/promotions/{id}/activate:
     post:
       summary: Activate a promotion
+      description: "**Role:** salesperson — makes a promotion available for use"
       tags: [Promotion]
+      x-salesperson: true
       parameters:
         - name: id
           in: path
@@ -765,7 +848,9 @@ paths:
   /api/v1/promotions/{id}/deactivate:
     post:
       summary: Deactivate a promotion
+      description: "**Role:** salesperson — makes a promotion unavailable for use"
       tags: [Promotion]
+      x-salesperson: true
       parameters:
         - name: id
           in: path
@@ -1198,18 +1283,94 @@ components:
         limit:
           type: integer
 
+    CreatePromotionRequest:
+      type: object
+      required: [title, discount_type, discount_value]
+      properties:
+        title:                    { type: string }
+        discount_type:            { type: string, enum: [percentage, fixed_amount] }
+        discount_value:           { type: number, format: double }
+        min_purchase:             { type: number, format: double, nullable: true }
+        coupon_code:              { type: string, nullable: true }
+        usage_limit:              { type: integer, nullable: true }
+        max_discount_amount:      { type: number, format: double, nullable: true, description: "cap for percentage discounts" }
+        budget:                   { type: number, format: double, nullable: true }
+        eligible_store_ids:       { type: array, items: { type: integer, format: int64 } }
+        eligible_category_ids:    { type: array, items: { type: integer, format: int64 } }
+        eligible_product_ids:     { type: array, items: { type: integer, format: int32 } }
+        eligible_user_ids:        { type: array, items: { type: integer, format: int64 } }
+        requires_approval:        { type: boolean }
+        start_at:                 { type: string, format: date-time, nullable: true }
+        end_at:                   { type: string, format: date-time, nullable: true }
+        is_countdown:             { type: boolean }
+        expire_sale_with_promotion: { type: boolean }
+
+    UpdatePromotionRequest:
+      type: object
+      properties:
+        title:                    { type: string }
+        discount_type:            { type: string, enum: [percentage, fixed_amount] }
+        discount_value:           { type: number, format: double }
+        min_purchase:             { type: number, format: double, nullable: true }
+        coupon_code:              { type: string, nullable: true }
+        usage_limit:              { type: integer, nullable: true }
+        max_discount_amount:      { type: number, format: double, nullable: true }
+        budget:                   { type: number, format: double, nullable: true }
+        eligible_store_ids:       { type: array, items: { type: integer, format: int64 } }
+        eligible_category_ids:    { type: array, items: { type: integer, format: int64 } }
+        eligible_product_ids:     { type: array, items: { type: integer, format: int32 } }
+        eligible_user_ids:        { type: array, items: { type: integer, format: int64 } }
+        requires_approval:        { type: boolean }
+        start_at:                 { type: string, format: date-time, nullable: true }
+        end_at:                   { type: string, format: date-time, nullable: true }
+        is_countdown:             { type: boolean }
+        expire_sale_with_promotion: { type: boolean }
+
+    PromotionListResponse:
+      type: object
+      properties:
+        promotions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:             { type: integer, format: int64 }
+              title:          { type: string }
+              discount_type:  { type: string }
+              discount_value: { type: number, format: double }
+              status:         { type: string }
+              start_at:       { type: string, format: date-time, nullable: true }
+              end_at:         { type: string, format: date-time, nullable: true }
+              created_at:     { type: string, format: date-time }
+        total:  { type: integer }
+        page:   { type: integer }
+        limit:  { type: integer }
+
     PromotionResponse:
       type: object
       properties:
-        ID:
-          type: integer
-          format: int64
-        Title:
-          type: string
-        Status:
-          type: string
-        CreatedAt:
-          type: string
+        id:                       { type: integer, format: int64 }
+        title:                    { type: string }
+        discount_type:            { type: string }
+        discount_value:           { type: number, format: double }
+        min_purchase:             { type: number, format: double, nullable: true }
+        coupon_code:              { type: string, nullable: true }
+        usage_limit:              { type: integer, nullable: true }
+        used_count:               { type: integer }
+        max_discount_amount:      { type: number, format: double, nullable: true }
+        budget:                   { type: number, format: double, nullable: true }
+        budget_spent:             { type: number, format: double }
+        eligible_store_ids:       { type: array, items: { type: integer, format: int64 } }
+        eligible_category_ids:    { type: array, items: { type: integer, format: int64 } }
+        eligible_product_ids:     { type: array, items: { type: integer, format: int32 } }
+        eligible_user_ids:        { type: array, items: { type: integer, format: int64 } }
+        requires_approval:        { type: boolean }
+        start_at:                 { type: string, format: date-time, nullable: true }
+        end_at:                   { type: string, format: date-time, nullable: true }
+        is_countdown:             { type: boolean }
+        expire_sale_with_promotion: { type: boolean }
+        status:                   { type: string }
+        created_at:               { type: string, format: date-time }
 
     ProductResponse:
       type: object

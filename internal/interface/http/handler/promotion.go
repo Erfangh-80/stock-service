@@ -27,6 +27,7 @@ func (h *PromotionHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/promotions/{id}/deactivate", h.Deactivate)
 }
 
+// Create handles POST /api/v1/promotions — Admin-only
 func (h *PromotionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var body promotioninterface.CreatePromotionParams
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -41,6 +42,7 @@ func (h *PromotionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	dto.EncodeJSON(w, http.StatusCreated, result)
 }
 
+// Get handles GET /api/v1/promotions/{id} — Admin-only
 func (h *PromotionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -55,6 +57,7 @@ func (h *PromotionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	dto.EncodeJSON(w, http.StatusOK, result)
 }
 
+// Update handles PUT /api/v1/promotions/{id} — Admin-only
 func (h *PromotionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -74,6 +77,7 @@ func (h *PromotionHandler) Update(w http.ResponseWriter, r *http.Request) {
 	dto.EncodeJSON(w, http.StatusOK, result)
 }
 
+// Delete handles DELETE /api/v1/promotions/{id} — Admin-only
 func (h *PromotionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -87,6 +91,7 @@ func (h *PromotionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	dto.EncodeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
+// Activate handles POST /api/v1/promotions/{id}/activate — Salesperson-only
 func (h *PromotionHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -100,6 +105,7 @@ func (h *PromotionHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	dto.EncodeJSON(w, http.StatusOK, map[string]string{"status": "activated"})
 }
 
+// Deactivate handles POST /api/v1/promotions/{id}/deactivate — Salesperson-only
 func (h *PromotionHandler) Deactivate(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -113,6 +119,7 @@ func (h *PromotionHandler) Deactivate(w http.ResponseWriter, r *http.Request) {
 	dto.EncodeJSON(w, http.StatusOK, map[string]string{"status": "deactivated"})
 }
 
+// List handles GET /api/v1/promotions — Admin-only
 func (h *PromotionHandler) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	page, _ := strconv.Atoi(q.Get("page"))

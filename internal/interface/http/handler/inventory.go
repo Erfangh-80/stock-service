@@ -157,6 +157,7 @@ func (h *InventoryHandler) Search(w http.ResponseWriter, r *http.Request) {
 	dto.EncodeJSON(w, http.StatusOK, result)
 }
 
+// ApplyPromotion handles POST /api/v1/inventory/{id}/promotion — Salesperson-only
 func (h *InventoryHandler) ApplyPromotion(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -182,6 +183,7 @@ func (h *InventoryHandler) ApplyPromotion(w http.ResponseWriter, r *http.Request
 	dto.EncodeJSON(w, http.StatusOK, result)
 }
 
+// RemovePromotion handles DELETE /api/v1/inventory/{id}/promotion — Salesperson-only
 func (h *InventoryHandler) RemovePromotion(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
