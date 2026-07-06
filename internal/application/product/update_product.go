@@ -8,9 +8,12 @@ type UpdateProductInput struct {
 	ID               int32
 	TitleFa          *string
 	TitleEn          *string
+	Slug             *string
 	Description      *string
 	BrandID          *int64
 	CategoryID       *int64
+	MetaTitle        *string
+	MetaDescription  *string
 	IndexImageFileID *int64
 }
 
@@ -40,6 +43,9 @@ func (uc *UpdateProductUseCase) Execute(input UpdateProductInput) (*product.Prod
 	if input.TitleEn != nil {
 		p.TitleEn = input.TitleEn
 	}
+	if input.Slug != nil {
+		p.GenerateSlug(*input.Slug)
+	}
 	if input.Description != nil {
 		p.Description = input.Description
 	}
@@ -57,6 +63,9 @@ func (uc *UpdateProductUseCase) Execute(input UpdateProductInput) (*product.Prod
 	}
 	if input.IndexImageFileID != nil {
 		p.IndexImageFileID = input.IndexImageFileID
+	}
+	if input.MetaTitle != nil || input.MetaDescription != nil {
+		p.UpdateSEO(input.MetaTitle, input.MetaDescription)
 	}
 
 	p.Touch()

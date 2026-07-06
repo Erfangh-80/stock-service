@@ -7,12 +7,15 @@ import (
 type CreateProductInput struct {
 	TitleFa          string
 	TitleEn          *string
+	Slug             string
 	Description      *string
 	BrandID          int64
 	CategoryID       int64
 	OwnerType        product.OwnerType
 	OwnerID          *int64
 	IsOriginal       *bool
+	MetaTitle        *string
+	MetaDescription  *string
 	IndexImageFileID *int64
 }
 
@@ -44,6 +47,15 @@ func (uc *CreateProductUseCase) Execute(input CreateProductInput) (*product.Prod
 	}
 	if input.IndexImageFileID != nil {
 		opts = append(opts, product.WithIndexImageFileID(input.IndexImageFileID))
+	}
+	if input.Slug != "" {
+		opts = append(opts, product.WithSlug(input.Slug))
+	}
+	if input.MetaTitle != nil {
+		opts = append(opts, product.WithMetaTitle(input.MetaTitle))
+	}
+	if input.MetaDescription != nil {
+		opts = append(opts, product.WithMetaDescription(input.MetaDescription))
 	}
 
 	p, err := product.NewProduct(input.TitleFa, input.BrandID, input.CategoryID, opts...)
