@@ -1,19 +1,19 @@
 package storewarehouselink
 
 import (
-	"stock-service/internal/domain/store_warehouse_link"
+	domainstorewarehouselink "stock-service/internal/domain/store_warehouse_link"
 )
 
 type CreateLinkUseCase struct {
-	repo storewarehouselink.Repository
+	repo domainstorewarehouselink.Repository
 }
 
-func NewCreateLinkUseCase(repo storewarehouselink.Repository) *CreateLinkUseCase {
+func NewCreateLinkUseCase(repo domainstorewarehouselink.Repository) *CreateLinkUseCase {
 	return &CreateLinkUseCase{repo: repo}
 }
 
-func (uc *CreateLinkUseCase) Execute(storeID, warehouseID int64) (*storewarehouselink.StoreWarehouseLink, error) {
-	swl := storewarehouselink.NewStoreWarehouseLink(storeID, warehouseID)
+func (uc *CreateLinkUseCase) Execute(storeID, warehouseID int64) (*domainstorewarehouselink.StoreWarehouseLink, error) {
+	swl := domainstorewarehouselink.NewStoreWarehouseLink(storeID, warehouseID)
 	if err := uc.repo.Save(swl); err != nil {
 		return nil, err
 	}

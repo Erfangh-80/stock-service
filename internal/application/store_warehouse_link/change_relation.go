@@ -1,22 +1,35 @@
 package storewarehouselink
 
 import (
-	"stock-service/internal/domain/store_warehouse_link"
+	domainstorewarehouselink "stock-service/internal/domain/store_warehouse_link"
 )
 
-type ChangeRelationUseCase struct {
-	repo storewarehouselink.Repository
+type ChangeRelationInput struct {
+	LinkID       int64
+	RelationType domainstorewarehouselink.RelationType
 }
 
-func NewChangeRelationUseCase(repo storewarehouselink.Repository) *ChangeRelationUseCase {
+type ChangeRelationUseCase struct {
+	repo domainstorewarehouselink.Repository
+}
+
+func NewChangeRelationUseCase(repo domainstorewarehouselink.Repository) *ChangeRelationUseCase {
 	return &ChangeRelationUseCase{repo: repo}
 }
 
-func (uc *ChangeRelationUseCase) Execute(linkID int64, relationType storewarehouselink.RelationType) error {
-	swl, err := uc.repo.FindByID(linkID)
+func (uc *ChangeRelationUseCase) Execute(input ChangeRelationInput) (*domainstorewarehouselink.StoreWarehouseLink, error) {
+	swl, err := uc.repo.FindByID(input.LinkID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	swl.ChangeRelationType(relationType)
-	return uc.repo.Save(swl)
+	if swl == nil {
+		return nil, domainstorewarehouselink.ErrLinkNotFound
+	}
+	if err := swl.ChangeRelationType(input.RelationType); err != nil {
+		return nil, err
+	}
+	if err := uc.repo.Save(swl); err != nil {
+		return nil, err
+	}
+	return swl, nil
 }

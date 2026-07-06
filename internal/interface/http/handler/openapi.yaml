@@ -1414,6 +1414,61 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WarehouseLinkResponse"
+    get:
+      summary: List warehouse links
+      tags: [Warehouse Link]
+      parameters:
+        - name: store_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+        - name: warehouse_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseLinkListResponse"
+
+  /api/v1/warehouse-links/{id}:
+    get:
+      summary: Get a warehouse link by ID
+      tags: [Warehouse Link]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseLinkResponse"
+    delete:
+      summary: Delete a warehouse link
+      tags: [Warehouse Link]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
 
   /api/v1/warehouse-links/{id}/relation:
     put:
@@ -2061,6 +2116,20 @@ components:
           format: int64
         relation_type:
           type: string
+
+    WarehouseLinkListResponse:
+      type: object
+      properties:
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/WarehouseLinkResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
 
     WarehouseResponse:
       type: object

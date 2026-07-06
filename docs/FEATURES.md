@@ -817,30 +817,57 @@
 | Method | Status |
 |---|---|
 | `NewStoreWarehouseLink(storeID, warehouseID)` | ✅ |
-| `ChangeRelationType(relationType)` | ✅ |
+| `ChangeRelationType(relationType)` | ✅ validates relation type, returns `ErrInvalidRelationType` |
+
+**Validators & errors**
+
+| Validator | Error | Status |
+|---|---|---|
+| `ValidateRelationType` | `ErrInvalidRelationType` | ✅ validates against allowed values |
+| — | `ErrLinkNotFound` | ✅ |
+
+**Repository** (`internal/domain/store_warehouse_link/repository.go`)
+
+| Method | Status |
+|---|---|
+| `Save(swl)` | ✅ |
+| `FindByID(id)` | ✅ |
+| `FindAll(filter)` | ✅ with pagination + filter by `StoreID`, `WarehouseID` |
+| `Delete(id)` | ✅ |
 
 **Use cases**
 
 | Use Case | Signature | Status |
 |---|---|---|
 | CreateLink | `Execute(storeID, warehouseID) (*StoreWarehouseLink, error)` | ✅ |
-| ChangeRelation | `Execute(linkID, relationType) error` | ✅ |
+| GetLink | `Execute(GetLinkInput) (*StoreWarehouseLink, error)` | ✅ |
+| ListLinks | `Execute(ListLinksInput) (*ListLinksOutput, error)` | ✅ by store_id, warehouse_id; paginated |
+| ChangeRelation | `Execute(ChangeRelationInput) (*StoreWarehouseLink, error)` | ✅ validates relation type + existence |
+| DeleteLink | `Execute(DeleteLinkInput) error` | ✅ validates existence before delete |
 
 **HTTP endpoints**
 
 | Route | Method | Status |
 |---|---|---|
 | `/api/v1/warehouse-links` | POST | ✅ |
-| `/api/v1/warehouse-links/{id}/relation` | PUT | ✅ |
+| `/api/v1/warehouse-links` | GET | ✅ list/filter (store_id, warehouse_id, page, limit) |
+| `/api/v1/warehouse-links/{id}` | GET | ✅ get by ID |
+| `/api/v1/warehouse-links/{id}` | DELETE | ✅ |
+| `/api/v1/warehouse-links/{id}/relation` | PUT | ✅ validate and change relation type |
 
-**Missing StoreWarehouseLink features**
+**Test coverage**
 
-| Feature | Status |
-|---|---|
-| Get link by ID | ❌ |
-| List links by store / by warehouse | ❌ |
-| Delete link | ❌ |
-| Validator for RelationType values | ❌ |
+| Layer | File | Tests |
+|---|---|---|
+| Entity | `tests/entity/store_warehouse_link/store_warehouse_link_test.go` | 3 |
+| Application | `tests/application/store_warehouse_link/create_link_test.go` | 1 |
+| Application | `tests/application/store_warehouse_link/get_link_test.go` | 2 |
+| Application | `tests/application/store_warehouse_link/list_links_test.go` | 4 |
+| Application | `tests/application/store_warehouse_link/change_relation_test.go` | 3 |
+| Application | `tests/application/store_warehouse_link/delete_link_test.go` | 2 |
+| Adapter | `tests/interface/store_warehouse_link/adapter_test.go` | 10 |
+| HTTP Handler | `tests/interface/http/store_warehouse_link/handler_test.go` | 12 |
+| **Total** | | **37** |
 
 ---
 

@@ -4,7 +4,6 @@ type RelationType string
 
 const RelationTypePrimary RelationType = "primary"
 
-// TODO: no created_at on schema — intentional for a junction table?
 type StoreWarehouseLink struct {
 	ID           int64
 	StoreID      int64
@@ -20,6 +19,10 @@ func NewStoreWarehouseLink(storeID, warehouseID int64) *StoreWarehouseLink {
 	}
 }
 
-func (swl *StoreWarehouseLink) ChangeRelationType(rt RelationType) {
+func (swl *StoreWarehouseLink) ChangeRelationType(rt RelationType) error {
+	if err := ValidateRelationType(rt); err != nil {
+		return err
+	}
 	swl.RelationType = rt
+	return nil
 }

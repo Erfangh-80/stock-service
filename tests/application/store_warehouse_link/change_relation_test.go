@@ -1,7 +1,6 @@
 package storewarehouselink_test
 
 import (
-	"errors"
 	"testing"
 
 	domainstorewarehouselink "stock-service/internal/domain/store_warehouse_link"
@@ -32,9 +31,17 @@ func (r *changeRelationInMemoryRepo) Save(swl *domainstorewarehouselink.StoreWar
 func (r *changeRelationInMemoryRepo) FindByID(id int64) (*domainstorewarehouselink.StoreWarehouseLink, error) {
 	swl, ok := r.links[id]
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, nil
 	}
 	return swl, nil
+}
+
+func (r *changeRelationInMemoryRepo) FindAll(_ domainstorewarehouselink.WarehouseLinkFilter) ([]*domainstorewarehouselink.StoreWarehouseLink, int, error) {
+	var result []*domainstorewarehouselink.StoreWarehouseLink
+	for _, swl := range r.links {
+		result = append(result, swl)
+	}
+	return result, len(result), nil
 }
 
 func (r *changeRelationInMemoryRepo) Delete(id int64) error {
@@ -49,15 +56,15 @@ func TestChangeRelation_Success(t *testing.T) {
 	swl := domainstorewarehouselink.NewStoreWarehouseLink(1, 2)
 	repo.Save(swl)
 
-	newType := domainstorewarehouselink.RelationType("secondary")
-	err := uc.Execute(swl.ID, newType)
+	result, err := uc.Execute(storewarehouselink.ChangeRelationInput{
+		LinkID:       swl.ID,
+		RelationType: domainstorewarehouselink.RelationTypePrimary,
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-
-	saved, _ := repo.FindByID(swl.ID)
-	if saved.RelationType != newType {
-		t.Errorf("expected RelationType %q, got %q", newType, saved.RelationType)
+	if result.RelationType != domainstorewarehouselink.RelationTypePrimary {
+		t.Errorf("expected RelationType %q, got %q", domainstorewarehouselink.RelationTypePrimary, result.RelationType)
 	}
 }
 
@@ -65,7 +72,26 @@ func TestChangeRelation_NotFound_ReturnsError(t *testing.T) {
 	repo := newChangeRelationInMemoryRepo()
 	uc := storewarehouselink.NewChangeRelationUseCase(repo)
 
-	err := uc.Execute(999, domainstorewarehouselink.RelationTypePrimary)
+	_, err := uc.Execute(storewarehouselink.ChangeRelationInput{
+		LinkID:       999,
+		RelationType: domainstorewarehouselink.RelationTypePrimary,
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestChangeRelation_InvalidType_ReturnsError(t *testing.T) {
+	repo := newChangeRelationInMemoryRepo()
+	uc := storewarehouselink.NewChangeRelationUseCase(repo)
+
+	swl := domainstorewarehouselink.NewStoreWarehouseLink(1, 2)
+	repo.Save(swl)
+
+	_, err := uc.Execute(storewarehouselink.ChangeRelationInput{
+		LinkID:       swl.ID,
+		RelationType: "invalid",
+	})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

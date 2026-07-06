@@ -7,37 +7,87 @@ import (
 	"strings"
 	"testing"
 
-	storewarehouselinkdomain "stock-service/internal/domain/store_warehouse_link"
+	app "stock-service/internal/application/store_warehouse_link"
+	domain "stock-service/internal/domain/store_warehouse_link"
 	"stock-service/internal/interface/http/handler"
 	"stock-service/internal/interface/http/dto"
 	storewarehouselinkiface "stock-service/internal/interface/store_warehouse_link"
 )
 
 type mockCreateLink struct {
-	fn func(input storewarehouselinkiface.CreateLinkInput) (*storewarehouselinkdomain.StoreWarehouseLink, error)
+	fn func(int64, int64) (*domain.StoreWarehouseLink, error)
 }
 
-func (m *mockCreateLink) Execute(input storewarehouselinkiface.CreateLinkInput) (*storewarehouselinkdomain.StoreWarehouseLink, error) {
+func (m *mockCreateLink) Execute(storeID, warehouseID int64) (*domain.StoreWarehouseLink, error) {
+	return m.fn(storeID, warehouseID)
+}
+
+type mockGetLink struct {
+	fn func(app.GetLinkInput) (*domain.StoreWarehouseLink, error)
+}
+
+func (m *mockGetLink) Execute(input app.GetLinkInput) (*domain.StoreWarehouseLink, error) {
+	return m.fn(input)
+}
+
+type mockListLinks struct {
+	fn func(app.ListLinksInput) (*app.ListLinksOutput, error)
+}
+
+func (m *mockListLinks) Execute(input app.ListLinksInput) (*app.ListLinksOutput, error) {
 	return m.fn(input)
 }
 
 type mockChangeRelation struct {
-	fn func(input storewarehouselinkiface.ChangeRelationInput) (*storewarehouselinkdomain.StoreWarehouseLink, error)
+	fn func(app.ChangeRelationInput) (*domain.StoreWarehouseLink, error)
 }
 
-func (m *mockChangeRelation) Execute(input storewarehouselinkiface.ChangeRelationInput) (*storewarehouselinkdomain.StoreWarehouseLink, error) {
+func (m *mockChangeRelation) Execute(input app.ChangeRelationInput) (*domain.StoreWarehouseLink, error) {
 	return m.fn(input)
 }
 
-func TestStoreWarehouseLinkHandler_Create_Success(t *testing.T) {
-	adapter := storewarehouselinkiface.NewAdapter(
-		&mockCreateLink{func(input storewarehouselinkiface.CreateLinkInput) (*storewarehouselinkdomain.StoreWarehouseLink, error) {
-			return &storewarehouselinkdomain.StoreWarehouseLink{
-				ID: 1, StoreID: input.StoreID, WarehouseID: input.WarehouseID,
-				RelationType: storewarehouselinkdomain.RelationTypePrimary,
+type mockDeleteLink struct {
+	fn func(app.DeleteLinkInput) error
+}
+
+func (m *mockDeleteLink) Execute(input app.DeleteLinkInput) error {
+	return m.fn(input)
+}
+
+func newTestAdapter(
+	create *mockCreateLink,
+	get *mockGetLink,
+	list *mockListLinks,
+	change *mockChangeRelation,
+	del *mockDeleteLink,
+) *storewarehouselinkiface.Adapter {
+	if create == nil {
+		create = &mockCreateLink{}
+	}
+	if get == nil {
+		get = &mockGetLink{}
+	}
+	if list == nil {
+		list = &mockListLinks{}
+	}
+	if change == nil {
+		change = &mockChangeRelation{}
+	}
+	if del == nil {
+		del = &mockDeleteLink{}
+	}
+	return storewarehouselinkiface.NewAdapter(create, get, list, change, del)
+}
+
+func TestHandler_Create_Success(t *testing.T) {
+	adapter := newTestAdapter(
+		&mockCreateLink{func(storeID, warehouseID int64) (*domain.StoreWarehouseLink, error) {
+			return &domain.StoreWarehouseLink{
+				ID: 1, StoreID: storeID, WarehouseID: warehouseID,
+				RelationType: domain.RelationTypePrimary,
 			}, nil
 		}},
-		&mockChangeRelation{},
+		nil, nil, nil, nil,
 	)
 	h := handler.NewStoreWarehouseLinkHandler(adapter)
 	mux := http.NewServeMux()
@@ -60,11 +110,8 @@ func TestStoreWarehouseLinkHandler_Create_Success(t *testing.T) {
 	}
 }
 
-func TestStoreWarehouseLinkHandler_Create_InvalidJSON(t *testing.T) {
-	adapter := storewarehouselinkiface.NewAdapter(
-		&mockCreateLink{},
-		&mockChangeRelation{},
-	)
+func TestHandler_Create_InvalidJSON(t *testing.T) {
+	adapter := newTestAdapter(nil, nil, nil, nil, nil)
 	h := handler.NewStoreWarehouseLinkHandler(adapter)
 	mux := http.NewServeMux()
 	h.Register(mux)
@@ -83,15 +130,164 @@ func TestStoreWarehouseLinkHandler_Create_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestStoreWarehouseLinkHandler_ChangeRelation_Success(t *testing.T) {
-	adapter := storewarehouselinkiface.NewAdapter(
-		&mockCreateLink{},
-		&mockChangeRelation{func(input storewarehouselinkiface.ChangeRelationInput) (*storewarehouselinkdomain.StoreWarehouseLink, error) {
-			return &storewarehouselinkdomain.StoreWarehouseLink{
-				ID: input.LinkID, StoreID: 1, WarehouseID: 1,
-				RelationType: storewarehouselinkdomain.RelationType(input.RelationType),
+func TestHandler_Get_Success(t *testing.T) {
+	adapter := newTestAdapter(
+		nil,
+		&mockGetLink{func(input app.GetLinkInput) (*domain.StoreWarehouseLink, error) {
+			return &domain.StoreWarehouseLink{
+				ID: 1, StoreID: 10, WarehouseID: 20, RelationType: domain.RelationTypePrimary,
 			}, nil
 		}},
+		nil, nil, nil,
+	)
+	h := handler.NewStoreWarehouseLinkHandler(adapter)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest("GET", "/api/v1/warehouse-links/1", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+	var resp storewarehouselinkiface.LinkResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if resp.ID != 1 {
+		t.Errorf("expected ID 1, got %d", resp.ID)
+	}
+}
+
+func TestHandler_Get_InvalidID(t *testing.T) {
+	adapter := newTestAdapter(nil, nil, nil, nil, nil)
+	h := handler.NewStoreWarehouseLinkHandler(adapter)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest("GET", "/api/v1/warehouse-links/abc", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rec.Code)
+	}
+	var errResp dto.ErrorResponse
+	json.NewDecoder(rec.Body).Decode(&errResp)
+	if errResp.Error != "invalid id" {
+		t.Errorf("expected 'invalid id', got %q", errResp.Error)
+	}
+}
+
+func TestHandler_List_Success(t *testing.T) {
+	adapter := newTestAdapter(
+		nil, nil,
+		&mockListLinks{func(input app.ListLinksInput) (*app.ListLinksOutput, error) {
+			return &app.ListLinksOutput{
+				Links: []*domain.StoreWarehouseLink{
+					{ID: 1, StoreID: 10, WarehouseID: 20, RelationType: domain.RelationTypePrimary},
+				},
+				Total: 1, Page: 1, Limit: 20,
+			}, nil
+		}},
+		nil, nil,
+	)
+	h := handler.NewStoreWarehouseLinkHandler(adapter)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest("GET", "/api/v1/warehouse-links", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+	var resp storewarehouselinkiface.LinkListResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if len(resp.Links) != 1 || resp.Total != 1 {
+		t.Errorf("unexpected response: %+v", resp)
+	}
+}
+
+func TestHandler_List_FilterByStore(t *testing.T) {
+	adapter := newTestAdapter(
+		nil, nil,
+		&mockListLinks{func(input app.ListLinksInput) (*app.ListLinksOutput, error) {
+			if input.StoreID == nil || *input.StoreID != 1 {
+				t.Error("expected store_id=1 filter")
+			}
+			return &app.ListLinksOutput{
+				Links: []*domain.StoreWarehouseLink{
+					{ID: 1, StoreID: 1, WarehouseID: 10, RelationType: domain.RelationTypePrimary},
+				},
+				Total: 1, Page: 1, Limit: 20,
+			}, nil
+		}},
+		nil, nil,
+	)
+	h := handler.NewStoreWarehouseLinkHandler(adapter)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest("GET", "/api/v1/warehouse-links?store_id=1", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+}
+
+func TestHandler_Delete_Success(t *testing.T) {
+	adapter := newTestAdapter(
+		nil, nil, nil, nil,
+		&mockDeleteLink{func(input app.DeleteLinkInput) error {
+			return nil
+		}},
+	)
+	h := handler.NewStoreWarehouseLinkHandler(adapter)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest("DELETE", "/api/v1/warehouse-links/1", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+}
+
+func TestHandler_Delete_InvalidID(t *testing.T) {
+	adapter := newTestAdapter(nil, nil, nil, nil, nil)
+	h := handler.NewStoreWarehouseLinkHandler(adapter)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest("DELETE", "/api/v1/warehouse-links/abc", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rec.Code)
+	}
+	var errResp dto.ErrorResponse
+	json.NewDecoder(rec.Body).Decode(&errResp)
+	if errResp.Error != "invalid id" {
+		t.Errorf("expected 'invalid id', got %q", errResp.Error)
+	}
+}
+
+func TestHandler_ChangeRelation_Success(t *testing.T) {
+	adapter := newTestAdapter(
+		nil, nil, nil,
+		&mockChangeRelation{func(input app.ChangeRelationInput) (*domain.StoreWarehouseLink, error) {
+			return &domain.StoreWarehouseLink{
+				ID: input.LinkID, StoreID: 1, WarehouseID: 1,
+				RelationType: domain.RelationType(input.RelationType),
+			}, nil
+		}},
+		nil,
 	)
 	h := handler.NewStoreWarehouseLinkHandler(adapter)
 	mux := http.NewServeMux()
@@ -114,11 +310,8 @@ func TestStoreWarehouseLinkHandler_ChangeRelation_Success(t *testing.T) {
 	}
 }
 
-func TestStoreWarehouseLinkHandler_ChangeRelation_InvalidID(t *testing.T) {
-	adapter := storewarehouselinkiface.NewAdapter(
-		&mockCreateLink{},
-		&mockChangeRelation{},
-	)
+func TestHandler_ChangeRelation_InvalidID(t *testing.T) {
+	adapter := newTestAdapter(nil, nil, nil, nil, nil)
 	h := handler.NewStoreWarehouseLinkHandler(adapter)
 	mux := http.NewServeMux()
 	h.Register(mux)
@@ -138,11 +331,8 @@ func TestStoreWarehouseLinkHandler_ChangeRelation_InvalidID(t *testing.T) {
 	}
 }
 
-func TestStoreWarehouseLinkHandler_ChangeRelation_InvalidJSON(t *testing.T) {
-	adapter := storewarehouselinkiface.NewAdapter(
-		&mockCreateLink{},
-		&mockChangeRelation{},
-	)
+func TestHandler_ChangeRelation_InvalidJSON(t *testing.T) {
+	adapter := newTestAdapter(nil, nil, nil, nil, nil)
 	h := handler.NewStoreWarehouseLinkHandler(adapter)
 	mux := http.NewServeMux()
 	h.Register(mux)

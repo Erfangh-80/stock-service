@@ -1,7 +1,6 @@
 package storewarehouselink_test
 
 import (
-	"errors"
 	"testing"
 
 	domainstorewarehouselink "stock-service/internal/domain/store_warehouse_link"
@@ -32,9 +31,17 @@ func (r *createLinkInMemoryRepo) Save(swl *domainstorewarehouselink.StoreWarehou
 func (r *createLinkInMemoryRepo) FindByID(id int64) (*domainstorewarehouselink.StoreWarehouseLink, error) {
 	swl, ok := r.links[id]
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, nil
 	}
 	return swl, nil
+}
+
+func (r *createLinkInMemoryRepo) FindAll(_ domainstorewarehouselink.WarehouseLinkFilter) ([]*domainstorewarehouselink.StoreWarehouseLink, int, error) {
+	var result []*domainstorewarehouselink.StoreWarehouseLink
+	for _, swl := range r.links {
+		result = append(result, swl)
+	}
+	return result, len(result), nil
 }
 
 func (r *createLinkInMemoryRepo) Delete(id int64) error {

@@ -24,7 +24,6 @@ import (
 	"stock-service/internal/infrastructure/memory"
 
 	warehousedomain "stock-service/internal/domain/warehouse"
-	storewarehouselinkdomain "stock-service/internal/domain/store_warehouse_link"
 
 	brandinterface "stock-service/internal/interface/brand"
 	categoryinterface "stock-service/internal/interface/category"
@@ -200,11 +199,17 @@ func main() {
 	)
 
 	createLinkUC := appstorewarehouselink.NewCreateLinkUseCase(warehouseLinkRepo)
+	getLinkUC := appstorewarehouselink.NewGetLinkUseCase(warehouseLinkRepo)
+	listLinksUC := appstorewarehouselink.NewListLinksUseCase(warehouseLinkRepo)
 	changeRelationUC := appstorewarehouselink.NewChangeRelationUseCase(warehouseLinkRepo)
+	deleteLinkUC := appstorewarehouselink.NewDeleteLinkUseCase(warehouseLinkRepo)
 
 	warehouseLinkAdapter := storewarehouselinkinterface.NewAdapter(
-		&createLinkAdapter{inner: createLinkUC},
-		&changeRelationAdapter{uc: changeRelationUC, repo: warehouseLinkRepo},
+		createLinkUC,
+		getLinkUC,
+		listLinksUC,
+		changeRelationUC,
+		deleteLinkUC,
 	)
 
 	createWHUC := appwarehouse.NewCreateWarehouseUseCase(warehouseRepo)
@@ -273,22 +278,4 @@ func (a *updateContactAdapter) Execute(input warehouseinterface.UpdateContactInp
 	return a.repo.FindByID(input.WarehouseID)
 }
 
-type createLinkAdapter struct {
-	inner *appstorewarehouselink.CreateLinkUseCase
-}
 
-func (a *createLinkAdapter) Execute(input storewarehouselinkinterface.CreateLinkInput) (*storewarehouselinkdomain.StoreWarehouseLink, error) {
-	return a.inner.Execute(input.StoreID, input.WarehouseID)
-}
-
-type changeRelationAdapter struct {
-	uc   *appstorewarehouselink.ChangeRelationUseCase
-	repo *memory.WarehouseLinkRepository
-}
-
-func (a *changeRelationAdapter) Execute(input storewarehouselinkinterface.ChangeRelationInput) (*storewarehouselinkdomain.StoreWarehouseLink, error) {
-	if err := a.uc.Execute(input.LinkID, storewarehouselinkdomain.RelationType(input.RelationType)); err != nil {
-		return nil, err
-	}
-	return a.repo.FindByID(input.LinkID)
-}
