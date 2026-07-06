@@ -29,8 +29,11 @@ func TestApprove_SetsStatusApproved(t *testing.T) {
 
 func TestReject_SetsStatusRejected(t *testing.T) {
 	sac := storeallowedcategory.NewStoreAllowedCategory(1, 2)
-	sac.Reject()
+	sac.Reject("not allowed")
 	if sac.Status != storeallowedcategory.StatusRejected {
 		t.Errorf("expected Status %q, got %q", storeallowedcategory.StatusRejected, sac.Status)
+	}
+	if sac.SupportNote != "not allowed" {
+		t.Errorf("expected SupportNote %q, got %q", "not allowed", sac.SupportNote)
 	}
 }

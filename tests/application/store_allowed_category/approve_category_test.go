@@ -1,7 +1,6 @@
 package storeallowedcategory_test
 
 import (
-	"errors"
 	"testing"
 
 	domainstoreallowedcategory "stock-service/internal/domain/store_allowed_category"
@@ -32,9 +31,17 @@ func (r *approveCategoryInMemoryRepo) Save(sac *domainstoreallowedcategory.Store
 func (r *approveCategoryInMemoryRepo) FindByID(id int64) (*domainstoreallowedcategory.StoreAllowedCategory, error) {
 	sac, ok := r.categories[id]
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, nil
 	}
 	return sac, nil
+}
+
+func (r *approveCategoryInMemoryRepo) FindAll(_ domainstoreallowedcategory.StoreCategoryFilter) ([]*domainstoreallowedcategory.StoreAllowedCategory, int, error) {
+	var result []*domainstoreallowedcategory.StoreAllowedCategory
+	for _, sac := range r.categories {
+		result = append(result, sac)
+	}
+	return result, len(result), nil
 }
 
 func (r *approveCategoryInMemoryRepo) Delete(id int64) error {
@@ -49,7 +56,7 @@ func TestApproveCategory_Success(t *testing.T) {
 	sac := domainstoreallowedcategory.NewStoreAllowedCategory(1, 2)
 	repo.Save(sac)
 
-	err := uc.Execute(sac.ID)
+	err := uc.Execute(storeallowedcategory.ApproveCategoryInput{CategoryID: sac.ID})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -64,7 +71,7 @@ func TestApproveCategory_NotFound_ReturnsError(t *testing.T) {
 	repo := newApproveCategoryInMemoryRepo()
 	uc := storeallowedcategory.NewApproveCategoryUseCase(repo)
 
-	err := uc.Execute(999)
+	err := uc.Execute(storeallowedcategory.ApproveCategoryInput{CategoryID: 999})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

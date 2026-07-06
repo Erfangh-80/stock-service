@@ -191,8 +191,12 @@ func main() {
 
 	storeCatAdapter := storeallowedcategoryinterface.NewAdapter(
 		appstoreallowedcategory.NewCreateCategoryUseCase(storeCatRepo),
+		appstoreallowedcategory.NewGetStoreCategoryUseCase(storeCatRepo),
+		appstoreallowedcategory.NewListStoreCategoriesUseCase(storeCatRepo),
 		appstoreallowedcategory.NewApproveCategoryUseCase(storeCatRepo),
 		appstoreallowedcategory.NewRejectCategoryUseCase(storeCatRepo),
+		appstoreallowedcategory.NewDeleteStoreCategoryUseCase(storeCatRepo),
+		appstoreallowedcategory.NewValidateCategoryExistsUseCase(storeCatRepo, categoryRepo),
 	)
 
 	createLinkUC := appstorewarehouselink.NewCreateLinkUseCase(warehouseLinkRepo)

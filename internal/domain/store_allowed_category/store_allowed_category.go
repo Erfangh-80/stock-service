@@ -32,6 +32,7 @@ func (sac *StoreAllowedCategory) Approve() {
 	sac.Status = StatusApproved
 }
 
-func (sac *StoreAllowedCategory) Reject() {
+func (sac *StoreAllowedCategory) Reject(supportNote string) {
 	sac.Status = StatusRejected
+	sac.SupportNote = supportNote
 }

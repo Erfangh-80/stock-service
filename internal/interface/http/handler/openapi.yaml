@@ -1306,6 +1306,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StoreCategoryResponse"
+    get:
+      summary: List store categories
+      tags: [Store Category]
+      parameters:
+        - name: store_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64 }
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreCategoryListResponse"
+
+  /api/v1/store-categories/{id}:
+    get:
+      summary: Get a store category by ID
+      tags: [Store Category]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreCategoryResponse"
+    delete:
+      summary: Delete a store category
+      tags: [Store Category]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
 
   /api/v1/store-categories/{id}/approve:
     post:
@@ -1329,6 +1380,15 @@ paths:
           in: path
           required: true
           schema: { type: integer, format: int64 }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                support_note:
+                  type: string
       responses:
         "200":
           description: OK
@@ -1956,22 +2016,36 @@ components:
     StoreCategoryResponse:
       type: object
       properties:
-        ID:
+        id:
           type: integer
           format: int64
-        StoreID:
+        store_id:
           type: integer
           format: int64
-        CategoryID:
+        category_id:
           type: integer
           format: int64
-        Status:
+        status:
           type: string
-        SupportNote:
+        support_note:
           type: string
-        CreatedAt:
+        created_at:
           type: string
           format: date-time
+
+    StoreCategoryListResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/StoreCategoryResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
 
     WarehouseLinkResponse:
       type: object

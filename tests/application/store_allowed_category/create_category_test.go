@@ -1,7 +1,6 @@
 package storeallowedcategory_test
 
 import (
-	"errors"
 	"testing"
 
 	domainstoreallowedcategory "stock-service/internal/domain/store_allowed_category"
@@ -32,9 +31,17 @@ func (r *createCategoryInMemoryRepo) Save(sac *domainstoreallowedcategory.StoreA
 func (r *createCategoryInMemoryRepo) FindByID(id int64) (*domainstoreallowedcategory.StoreAllowedCategory, error) {
 	sac, ok := r.categories[id]
 	if !ok {
-		return nil, errors.New("not found")
+		return nil, nil
 	}
 	return sac, nil
+}
+
+func (r *createCategoryInMemoryRepo) FindAll(_ domainstoreallowedcategory.StoreCategoryFilter) ([]*domainstoreallowedcategory.StoreAllowedCategory, int, error) {
+	var result []*domainstoreallowedcategory.StoreAllowedCategory
+	for _, sac := range r.categories {
+		result = append(result, sac)
+	}
+	return result, len(result), nil
 }
 
 func (r *createCategoryInMemoryRepo) Delete(id int64) error {

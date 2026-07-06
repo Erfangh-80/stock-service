@@ -731,36 +731,73 @@
 | Method | Status |
 |---|---|
 | `NewStoreAllowedCategory(storeID, categoryID)` | ✅ |
-| `Approve()` | 🔶 (sets status, no validation) |
-| `Reject()` | 🔶 (sets status, no validation) |
+| `Approve()` | ✅ |
+| `Reject(supportNote)` | ✅ sets status + support note |
 
-**⚠️ Known gap:** Validators and most errors are stubs with TODO comments.
+**Validators & errors**
+
+| Validator | Error | Status |
+|---|---|---|
+| `ValidateSupportNote` | `ErrSupportNoteTooLong` (max 500 chars) | ✅ |
+| — | `ErrStoreCategoryNotFound` | ✅ |
+| — | `ErrCategoryNotFound` | ✅ |
+
+**Repository** (`internal/domain/store_allowed_category/repository.go`)
+
+| Method | Status |
+|---|---|
+| `Save(sac)` | ✅ |
+| `FindByID(id)` | ✅ |
+| `FindAll(filter)` | ✅ with pagination + filter by `StoreID` |
+| `Delete(id)` | ✅ |
 
 **Use cases**
 
 | Use Case | Signature | Status |
 |---|---|---|
 | CreateCategory | `Execute(storeID, categoryID int64) (*StoreAllowedCategory, error)` | ✅ |
-| ApproveCategory | `Execute(id int64) error` | ✅ |
-| RejectCategory | `Execute(id int64) error` | ✅ |
+| GetStoreCategory | `Execute(GetStoreCategoryInput) (*StoreAllowedCategory, error)` | ✅ |
+| ListStoreCategories | `Execute(ListStoreCategoriesInput) (*ListStoreCategoriesOutput, error)` | ✅ by store_id; paginated |
+| ApproveCategory | `Execute(ApproveCategoryInput) error` | ✅ validates existence before approve |
+| RejectCategory | `Execute(RejectCategoryInput) error` | ✅ validates existence + support note length |
+| DeleteStoreCategory | `Execute(DeleteStoreCategoryInput) error` | ✅ validates existence before delete |
+| ValidateCategoryExists | `Execute(ValidateCategoryExistsInput) error` | ✅ cross-domain: checks category exists in product category domain |
+
+**Category → product category linkage** (cross-domain validation use case)
+
+| Aspect | Detail |
+|---|---|
+| Package | `internal/application/store_allowed_category/validate_category_exists.go` |
+| Signature | `Execute(input) error` |
+| Dependencies | `store_allowed_category.Repository` + `category.Repository` |
+| Logic | Called before Create; finds category by ID in product category domain; returns `ErrCategoryNotFound` if absent |
+| Integration | Wired via adapter — `Create` calls validate first, returns 404 if category doesn't exist |
 
 **HTTP endpoints**
 
 | Route | Method | Status |
 |---|---|---|
 | `/api/v1/store-categories` | POST | ✅ |
+| `/api/v1/store-categories` | GET | ✅ list/filter (store_id, page, limit) |
+| `/api/v1/store-categories/{id}` | GET | ✅ get by ID |
+| `/api/v1/store-categories/{id}` | DELETE | ✅ |
 | `/api/v1/store-categories/{id}/approve` | POST | ✅ |
-| `/api/v1/store-categories/{id}/reject` | POST | ✅ |
+| `/api/v1/store-categories/{id}/reject` | POST | ✅ accepts JSON body with `support_note` |
 
-**Missing StoreAllowedCategory features**
+**Test coverage**
 
-| Feature | Status |
-|---|---|
-| Get by ID | ❌ |
-| List by store | ❌ |
-| Delete | ❌ |
-| Add support note on reject | ❌ |
-| Category → product category linkage | ❌ |
+| Layer | File | Tests |
+|---|---|---|
+| Entity | `tests/entity/store_allowed_category/store_allowed_category_test.go` | 3 |
+| Application | `tests/application/store_allowed_category/create_category_test.go` | 1 |
+| Application | `tests/application/store_allowed_category/get_store_category_test.go` | 2 |
+| Application | `tests/application/store_allowed_category/list_store_categories_test.go` | 3 |
+| Application | `tests/application/store_allowed_category/approve_category_test.go` | 2 |
+| Application | `tests/application/store_allowed_category/reject_category_test.go` | 3 |
+| Application | `tests/application/store_allowed_category/delete_store_category_test.go` | 2 |
+| Adapter | `tests/interface/store_allowed_category/adapter_test.go` | 10 |
+| HTTP Handler | `tests/interface/http/store_allowed_category/handler_test.go` | 12 |
+| **Total** | | **38** |
 
 ---
 
@@ -866,8 +903,8 @@
 | Feature | Status |
 |---|---|
 | **Auth / permissions** — any caller can call any endpoint | ❌ |
-| **List/search endpoints** — Store, Inventory, Product, Brand, Category, Reference Price, Sales Commission have list with filtering + pagination | 🔶 (7/9 domains) |
-| **Pagination** — Store, Inventory, Product, Reference Price, Sales Commission use cases support pagination | 🔶 |
+| **List/search endpoints** — Store, Inventory, Product, Brand, Category, Reference Price, Sales Commission, Store Allowed Category have list with filtering + pagination | 🔶 (8/9 domains) |
+| **Pagination** — Store, Inventory, Product, Reference Price, Sales Commission, Store Allowed Category use cases support pagination | 🔶 |
 | **Order / checkout** — entirely absent | ❌ |
 | **User entity** — referenced via `UserID`, `OwnerID`, `CreatedByUserID` but no User domain exists | ❌ |
 | **Address entity** — referenced via `AddressID` but no Address domain exists | ❌ |
@@ -888,7 +925,7 @@
 | Package | Files | Tests | Status |
 |---|---|---|---|---|
 | `tests/entity/*` | 8 files | Creation, validation errors, state transitions | ✅ |
-| `tests/application/*` | 54 files | Every use case (success + error) | ✅ |
+| `tests/application/*` | 57 files | Every use case (success + error) | ✅ |
 | `tests/interface/*` (adapter) | 9 files | Every adapter method (success + error mapping) | ✅ |
 | `tests/interface/http/*` (handler) | 9 files | Every endpoint (success + invalid JSON, invalid ID, errors) | ✅ |
-| **Total** | **80 files** | **35 test suites** | **✅ all pass** |
+| **Total** | **83 files** | **35 test suites** | **✅ all pass** |

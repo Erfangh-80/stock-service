@@ -1,21 +1,28 @@
 package storeallowedcategory
 
 import (
-	"stock-service/internal/domain/store_allowed_category"
+	domainstoreallowedcategory "stock-service/internal/domain/store_allowed_category"
 )
 
-type ApproveCategoryUseCase struct {
-	repo storeallowedcategory.Repository
+type ApproveCategoryInput struct {
+	CategoryID int64
 }
 
-func NewApproveCategoryUseCase(repo storeallowedcategory.Repository) *ApproveCategoryUseCase {
+type ApproveCategoryUseCase struct {
+	repo domainstoreallowedcategory.Repository
+}
+
+func NewApproveCategoryUseCase(repo domainstoreallowedcategory.Repository) *ApproveCategoryUseCase {
 	return &ApproveCategoryUseCase{repo: repo}
 }
 
-func (uc *ApproveCategoryUseCase) Execute(categoryID int64) error {
-	sac, err := uc.repo.FindByID(categoryID)
+func (uc *ApproveCategoryUseCase) Execute(input ApproveCategoryInput) error {
+	sac, err := uc.repo.FindByID(input.CategoryID)
 	if err != nil {
 		return err
+	}
+	if sac == nil {
+		return domainstoreallowedcategory.ErrStoreCategoryNotFound
 	}
 	sac.Approve()
 	return uc.repo.Save(sac)
