@@ -6,10 +6,11 @@ import (
 	domainpromotion "stock-service/internal/domain/promotion"
 )
 
-type CreatePromotionInput struct {
-	Title                   string
-	DiscountType            domainpromotion.DiscountType
-	DiscountValue           float64
+type UpdatePromotionInput struct {
+	ID                      int64
+	Title                   *string
+	DiscountType            *domainpromotion.DiscountType
+	DiscountValue           *float64
 	MinPurchase             *float64
 	CouponCode              *string
 	UsageLimit              *int
@@ -19,35 +20,54 @@ type CreatePromotionInput struct {
 	EligibleCategoryIDs     []int64
 	EligibleProductIDs      []int32
 	EligibleUserIDs         []int64
-	RequiresApproval        bool
+	RequiresApproval        *bool
 	StartAt                 *string
 	EndAt                   *string
-	IsCountdown             bool
-	ExpireSaleWithPromotion bool
+	IsCountdown             *bool
+	ExpireSaleWithPromotion *bool
 }
 
-type CreatePromotionUseCase struct {
+type UpdatePromotionUseCase struct {
 	repo domainpromotion.Repository
 }
 
-func NewCreatePromotionUseCase(repo domainpromotion.Repository) *CreatePromotionUseCase {
-	return &CreatePromotionUseCase{repo: repo}
+func NewUpdatePromotionUseCase(repo domainpromotion.Repository) *UpdatePromotionUseCase {
+	return &UpdatePromotionUseCase{repo: repo}
 }
 
-func (uc *CreatePromotionUseCase) Execute(input CreatePromotionInput) (*domainpromotion.Promotion, error) {
-	startAt, endAt, err := parseDates(input.StartAt, input.EndAt)
+func (uc *UpdatePromotionUseCase) Execute(input UpdatePromotionInput) (*domainpromotion.Promotion, error) {
+	p, err := uc.repo.FindByID(input.ID)
 	if err != nil {
 		return nil, err
+	}
+	if p == nil {
+		return nil, domainpromotion.ErrPromotionNotFound
 	}
 
 	if input.CouponCode != nil {
 		existing, _ := uc.repo.FindByCouponCode(*input.CouponCode)
-		if existing != nil {
+		if existing != nil && existing.ID != input.ID {
 			return nil, domainpromotion.ErrCouponCodeAlreadyExists
 		}
 	}
 
-	domainInput := domainpromotion.CreatePromotionInput{
+	var startAt, endAt *time.Time
+	if input.StartAt != nil {
+		t, err := time.Parse(time.RFC3339, *input.StartAt)
+		if err != nil {
+			return nil, domainpromotion.ErrInvalidDateFormat
+		}
+		startAt = &t
+	}
+	if input.EndAt != nil {
+		t, err := time.Parse(time.RFC3339, *input.EndAt)
+		if err != nil {
+			return nil, domainpromotion.ErrInvalidDateFormat
+		}
+		endAt = &t
+	}
+
+	domainInput := domainpromotion.UpdatePromotionInput{
 		Title:                   input.Title,
 		DiscountType:            input.DiscountType,
 		DiscountValue:           input.DiscountValue,
@@ -67,34 +87,11 @@ func (uc *CreatePromotionUseCase) Execute(input CreatePromotionInput) (*domainpr
 		ExpireSaleWithPromotion: input.ExpireSaleWithPromotion,
 	}
 
-	p, err := domainpromotion.NewPromotion(domainInput)
-	if err != nil {
+	if err := p.Update(domainInput); err != nil {
 		return nil, err
 	}
 	if err := uc.repo.Save(p); err != nil {
 		return nil, err
 	}
 	return p, nil
-}
-
-func parseDates(startStr, endStr *string) (*time.Time, *time.Time, error) {
-	if startStr == nil && endStr == nil {
-		return nil, nil, nil
-	}
-	var startAt, endAt *time.Time
-	if startStr != nil {
-		t, err := time.Parse(time.RFC3339, *startStr)
-		if err != nil {
-			return nil, nil, domainpromotion.ErrInvalidDateFormat
-		}
-		startAt = &t
-	}
-	if endStr != nil {
-		t, err := time.Parse(time.RFC3339, *endStr)
-		if err != nil {
-			return nil, nil, domainpromotion.ErrInvalidDateFormat
-		}
-		endAt = &t
-	}
-	return startAt, endAt, nil
 }
