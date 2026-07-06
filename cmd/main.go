@@ -99,7 +99,7 @@ func main() {
 		appinventory.NewListInventoryUseCase(inventoryRepo),
 		appinventory.NewDeleteInventoryUseCase(inventoryRepo),
 		appinventory.NewSearchInventoryUseCase(inventoryRepo, productRepo),
-		appinventory.NewApplyPromotionUseCase(inventoryRepo),
+		appinventory.NewApplyPromotionUseCase(inventoryRepo, promotionRepo),
 		appinventory.NewRemovePromotionUseCase(inventoryRepo),
 		appinventory.NewUpdateInventoryUseCase(inventoryRepo),
 		appinventory.NewSuspendVendorSaleUseCase(inventoryRepo),
@@ -116,6 +116,9 @@ func main() {
 		apppromotion.NewGetPromotionUseCase(promotionRepo),
 		apppromotion.NewActivatePromotionUseCase(promotionRepo),
 		apppromotion.NewDeactivatePromotionUseCase(promotionRepo),
+		apppromotion.NewUpdatePromotionUseCase(promotionRepo),
+		apppromotion.NewDeletePromotionUseCase(promotionRepo),
+		apppromotion.NewListPromotionsUseCase(promotionRepo),
 	)
 
 	productAdapter := productinterface.NewAdapter(
