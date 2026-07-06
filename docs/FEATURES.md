@@ -212,6 +212,12 @@
 | `TitleFa` | `string` | ✅ |
 | `TitleEn` | `*string` | ✅ |
 | `Description` | `*string` | ✅ |
+| `Slug` | `string` | ✅ |
+| `MetaTitle` | `*string` | ✅ |
+| `MetaDescription` | `*string` | ✅ |
+| `IsEnabled` | `bool` | ✅ |
+| `EnabledAt` | `*time.Time` | ✅ |
+| `DisabledAt` | `*time.Time` | ✅ |
 | `BrandID` | `int64` | ✅ |
 | `CategoryID` | `int64` | ✅ |
 | `OwnerType` | `OwnerType` (system/user) | ✅ |
@@ -230,7 +236,10 @@
 | `NewProduct(titleFa, brandID, categoryID, opts...)` | ✅ validates required, applies 6 functional options |
 | `MarkActive()` | ✅ |
 | `MarkRejected()` | ✅ |
+| `MarkEnabled()` / `MarkDisabled()` | ✅ |
 | `SoftDelete()` | ✅ sets status + DeletedAt |
+| `UpdateSEO(metaTitle, metaDesc)` | ✅ |
+| `GenerateSlug(slug)` | ✅ |
 | `Touch()` | ✅ updates UpdatedAt |
 
 **Functional options**
@@ -239,6 +248,9 @@
 |---|---|
 | `WithTitleEn(v)` | ✅ |
 | `WithDescription(v)` | ✅ |
+| `WithSlug(v)` | ✅ |
+| `WithMetaTitle(v)` | ✅ |
+| `WithMetaDescription(v)` | ✅ |
 | `WithOwnerType(v)` | ✅ |
 | `WithOwnerID(v)` | ✅ |
 | `WithIsOriginal(v)` | ✅ |
@@ -264,34 +276,143 @@
 | ActivateProduct | `Execute(ActivateProductInput) (*Product, error)` | ✅ |
 | RejectProduct | `Execute(RejectProductInput) (*Product, error)` | ✅ |
 | SoftDeleteProduct | `Execute(SoftDeleteProductInput) (*Product, error)` | ✅ |
+| EnableProduct | `Execute(EnableProductInput) (*Product, error)` | ✅ |
+| DisableProduct | `Execute(DisableProductInput) (*Product, error)` | ✅ |
+| UpdateSEO | `Execute(UpdateSEOInput) (*Product, error)` | ✅ |
+| ListProducts | `Execute(ListProductsInput) (*ListProductsOutput, error)` | ✅ by owner, status, category, brand, search; paginated |
 
 **HTTP endpoints**
 
 | Route | Method | Status |
 |---|---|---|
 | `/api/v1/products` | POST | ✅ |
+| `/api/v1/products` | GET | ✅ list (owner_type, owner_id, status, category_id, brand_id, search, page, limit) |
+| `/api/v1/products/my` | GET | ✅ seller self-service "my products" |
 | `/api/v1/products/{id}` | GET | ✅ |
 | `/api/v1/products/{id}` | PUT | ✅ |
-| `/api/v1/products/{id}` | DELETE | ✅ |
+| `/api/v1/products/{id}` | DELETE | ✅ soft delete |
 | `/api/v1/products/{id}/activate` | POST | ✅ |
 | `/api/v1/products/{id}/reject` | POST | ✅ |
+| `/api/v1/products/{id}/enable` | POST | ✅ admin enable |
+| `/api/v1/products/{id}/disable` | POST | ✅ admin disable |
+| `/api/v1/products/{id}/seo` | PUT | ✅ update meta title / meta description |
+
+**Brand entity** (`internal/domain/brand/`, `internal/application/brand/`)
+
+| Field | Type | Status |
+|---|---|---|
+| `ID` | `int64` | ✅ |
+| `NameFa` | `string` | ✅ |
+| `NameEn` | `*string` | ✅ |
+| `Status` | `BrandStatus` (active/inactive) | ✅ |
+| `CreatedAt` | `time.Time` | ✅ |
+
+**Use cases:** CreateBrand, GetBrand, UpdateBrand, DeleteBrand, ListBrands — all ✅
+
+**HTTP endpoints:** `POST/GET /api/v1/brands`, `GET/PUT/DELETE /api/v1/brands/{id}` — all ✅
+
+**Category entity** (`internal/domain/category/`, `internal/application/category/`)
+
+| Field | Type | Status |
+|---|---|---|
+| `ID` | `int64` | ✅ |
+| `NameFa` | `string` | ✅ |
+| `NameEn` | `*string` | ✅ |
+| `ParentID` | `*int64` | ✅ |
+| `Status` | `CategoryStatus` (active/inactive) | ✅ |
+| `CreatedAt` | `time.Time` | ✅ |
+
+**Use cases:** CreateCategory, GetCategory, UpdateCategory, DeleteCategory, ListCategories — all ✅
+
+**HTTP endpoints:** `POST/GET /api/v1/categories`, `GET/PUT/DELETE /api/v1/categories/{id}` — all ✅
+
+**ProductImage** (`internal/domain/product_image/`, `internal/application/product_image/`)
+
+| Field | Type | Status |
+|---|---|---|
+| `ID` | `int64` | ✅ |
+| `ProductID` | `int32` | ✅ |
+| `FileID` | `int64` | ✅ |
+| `SortOrder` | `int` | ✅ |
+| `CreatedAt` | `time.Time` | ✅ |
+
+**Use cases:** CreateImage, ListImages, DeleteImage — all ✅
+
+**HTTP endpoints:** `POST/GET /api/v1/products/{productId}/images`, `DELETE /api/v1/products/images/{id}` — all ✅
+
+**ProductType / Product Variants** (`internal/domain/product_type/`, `internal/application/product_type/`)
+
+| Field | Type | Status |
+|---|---|---|
+| `ID` | `int64` | ✅ |
+| `ProductID` | `int32` | ✅ |
+| `Name` | `string` | ✅ (e.g. "Size", "Color") |
+| `Value` | `string` | ✅ (e.g. "XL", "Red") |
+| `SortOrder` | `int` | ✅ |
+
+**Use cases:** CreateType, ListTypes — all ✅
+
+**HTTP endpoints:** `POST/GET /api/v1/products/{productId}/types` — all ✅
+
+**ProductAttribute / Custom Fields** (`internal/domain/product_attribute/`, `internal/application/product_attribute/`)
+
+| Field | Type | Status |
+|---|---|---|
+| `ID` | `int64` | ✅ |
+| `ProductID` | `int32` | ✅ |
+| `Key` | `string` | ✅ |
+| `Value` | `string` | ✅ |
+| `CreatedAt` | `time.Time` | ✅ |
+
+**Use cases:** CreateAttribute, ListAttributes — all ✅
+
+**HTTP endpoints:** `POST/GET /api/v1/products/{productId}/attributes` — all ✅
+
+**PriceHistory** (`internal/domain/price_history/`, `internal/application/price_history/`)
+
+| Field | Type | Status |
+|---|---|---|
+| `ID` | `int64` | ✅ |
+| `ProductID` | `int32` | ✅ |
+| `OldPrice` | `float64` | ✅ |
+| `NewPrice` | `float64` | ✅ |
+| `ChangedBy` | `string` | ✅ |
+| `CreatedAt` | `time.Time` | ✅ |
+
+**Use cases:** CreatePriceHistory, GetPriceHistory — all ✅
+
+**HTTP endpoints:** `POST/GET /api/v1/products/{productId}/price-history` — all ✅
+
+**ProductBundle / Upsells / Cross-sells** (`internal/domain/product_bundle/`, `internal/application/product_bundle/`)
+
+| Field | Type | Status |
+|---|---|---|
+| `ID` | `int64` | ✅ |
+| `ProductID` | `int32` | ✅ |
+| `LinkedProductID` | `int64` | ✅ |
+| `RelationType` | `RelationType` (bundle/upsell/cross-sell) | ✅ |
+| `CreatedAt` | `time.Time` | ✅ |
+
+**Use cases:** CreateBundle, ListBundles — all ✅
+
+**HTTP endpoints:** `POST/GET /api/v1/products/{productId}/bundles` — all ✅
 
 **Missing Product features**
 
 | Feature | Status |
 |---|---|
-| List products (by owner, by status, by category, by brand, search, paginated) | ❌ |
-| Product images / gallery (multiple files, ordering) | ❌ |
-| Product variants (size, color, etc.) | ❌ |
-| Product attributes / custom fields | ❌ |
-| Brand entity CRUD | ❌ |
-| Category entity CRUD | ❌ |
-| Seller self-service: "my products" list | ❌ |
-| Admin-only gate on activate/reject | ❌ |
-| Slug / URL-friendly name generation | ❌ |
-| SEO fields (meta title, meta description) | ❌ |
-| Price history | ❌ |
-| Product bundles / upsells / cross-sells | ❌ |
+| List products (by owner, by status, by category, by brand, search, paginated) | ✅ |
+| Product images / gallery (multiple files, ordering) | ✅ |
+| Product types / variants (size, color, etc.) | ✅ |
+| Product attributes / custom fields | ✅ |
+| Brand entity CRUD | ✅ |
+| Category entity CRUD | ✅ |
+| Seller self-service: "my products" list | ✅ |
+| Admin enable/disable product | ✅ |
+| Slug / URL-friendly name generation | ✅ |
+| SEO fields (meta title, meta description) | ✅ |
+| Price history | ✅ |
+| Product bundles / upsells / cross-sells | ✅ |
 | Review / rating system | ❌ |
 
 ---
@@ -500,7 +621,6 @@
 | List by store | ❌ |
 | Delete | ❌ |
 | Add support note on reject | ❌ |
-| Category entity CRUD | ❌ |
 | Category → product category linkage | ❌ |
 
 ---
@@ -607,14 +727,14 @@
 | Feature | Status |
 |---|---|
 | **Auth / permissions** — any caller can call any endpoint | ❌ |
-| **List/search endpoints** — only Store + Inventory have list with filtering + pagination; 7 domains have none | 🔶 |
-| **Pagination** — Store and Inventory use cases support pagination | 🔶 |
+| **List/search endpoints** — Store, Inventory, Product, Brand, Category have list with filtering + pagination | 🔶 (5/9 domains) |
+| **Pagination** — Store, Inventory, Product use cases support pagination | 🔶 |
 | **Order / checkout** — entirely absent | ❌ |
 | **User entity** — referenced via `UserID`, `OwnerID`, `CreatedByUserID` but no User domain exists | ❌ |
 | **Address entity** — referenced via `AddressID` but no Address domain exists | ❌ |
 | **Media / file entity** — referenced via `IndexImageFileID`, `MediaAssets` but no File domain exists | ❌ |
-| **Category entity** — referenced via `CategoryID` in Product and StoreAllowedCategory but no Category domain exists | ❌ |
-| **Brand entity** — referenced via `BrandID` in Product but no Brand domain exists | ❌ |
+| **Category entity** — referenced via `CategoryID` in Product and StoreAllowedCategory | ✅ |
+| **Brand entity** — referenced via `BrandID` in Product | ✅ |
 | **Database** — all repos are in-memory, no PostgreSQL implementation | ❌ |
 | **Commission calculation** — rate stored but never computed | ❌ |
 | **Promotion discount rules** — type/value fields missing from entity | ❌ |
@@ -626,9 +746,9 @@
 ## Test Coverage
 
 | Package | Files | Tests | Status |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 | `tests/entity/*` | 8 files | Creation, validation errors, state transitions | ✅ |
-| `tests/application/*` | 31 files | Every use case (success + error) | ✅ |
-| `tests/interface/*` | 8 files | Every adapter method (success + error mapping) | ✅ |
-| `tests/interface/http/*` | 7 files | Every endpoint (success + invalid JSON, invalid ID, errors) | ✅ |
-| **Total** | **54 files** | **77 suites** | **✅ all pass** |
+| `tests/application/*` | 43 files | Every use case (success + error) | ✅ |
+| `tests/interface/*` | 18 files | Every adapter method (success + error mapping) | ✅ |
+| `tests/interface/http/*` | 9 files | Every endpoint (success + invalid JSON, invalid ID, errors) | ✅ |
+| **Total** | **69 files** | **35 test suites** | **✅ all pass** |
