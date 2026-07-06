@@ -40,6 +40,18 @@ func (r *inmemoryProductRepo) FindByTitle(query string) ([]*product.Product, err
 	return result, nil
 }
 
+func (r *inmemoryProductRepo) FindAll(filter product.ProductFilter) ([]*product.Product, error) {
+	var result []*product.Product
+	for _, p := range r.products {
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func (r *inmemoryProductRepo) Count(filter product.ProductFilter) (int, error) {
+	return len(r.products), nil
+}
+
 func TestCreateInventoryUseCase_Success(t *testing.T) {
 	invRepo := newInmemoryRepository()
 	prodRepo := newInmemoryProductRepo()

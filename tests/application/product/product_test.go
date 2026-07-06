@@ -47,6 +47,18 @@ func (r *inMemoryProductRepo) FindByTitle(query string) ([]*product.Product, err
 	return result, nil
 }
 
+func (r *inMemoryProductRepo) FindAll(filter product.ProductFilter) ([]*product.Product, error) {
+	var result []*product.Product
+	for _, p := range r.products {
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func (r *inMemoryProductRepo) Count(filter product.ProductFilter) (int, error) {
+	return len(r.products), nil
+}
+
 func TestCreateProduct_Success(t *testing.T) {
 	repo := newInMemoryProductRepo()
 	uc := appproduct.NewCreateProductUseCase(repo)

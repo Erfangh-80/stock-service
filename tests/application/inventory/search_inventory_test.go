@@ -33,6 +33,8 @@ func (m *mockProductRepo) FindByTitle(query string) ([]*product.Product, error) 
 }
 
 func (m *mockProductRepo) Save(p *product.Product) error { return nil }
+func (m *mockProductRepo) FindAll(filter product.ProductFilter) ([]*product.Product, error) { return m.products, nil }
+func (m *mockProductRepo) Count(filter product.ProductFilter) (int, error) { return len(m.products), nil }
 
 func TestSearchInventory_ByProductName(t *testing.T) {
 	invRepo := newInmemoryRepository()
