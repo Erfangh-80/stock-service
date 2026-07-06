@@ -4,8 +4,15 @@ import (
 	"log"
 	"net/http"
 
+	appbrand "stock-service/internal/application/brand"
+	appcategory "stock-service/internal/application/category"
 	appinventory "stock-service/internal/application/inventory"
 	appproduct "stock-service/internal/application/product"
+	appproductimage "stock-service/internal/application/product_image"
+	appproducttype "stock-service/internal/application/product_type"
+	appproductattribute "stock-service/internal/application/product_attribute"
+	apppricehistory "stock-service/internal/application/price_history"
+	appproductbundle "stock-service/internal/application/product_bundle"
 	apppromotion "stock-service/internal/application/promotion"
 	appreferenceprice "stock-service/internal/application/reference_price"
 	appsalescommission "stock-service/internal/application/sales_commission"
@@ -19,8 +26,15 @@ import (
 	warehousedomain "stock-service/internal/domain/warehouse"
 	storewarehouselinkdomain "stock-service/internal/domain/store_warehouse_link"
 
+	brandinterface "stock-service/internal/interface/brand"
+	categoryinterface "stock-service/internal/interface/category"
 	inventoryinterface "stock-service/internal/interface/inventory"
 	productinterface "stock-service/internal/interface/product"
+	productimageinterface "stock-service/internal/interface/product_image"
+	producttypeinterface "stock-service/internal/interface/product_type"
+	productattributeinterface "stock-service/internal/interface/product_attribute"
+	pricehistoryinterface "stock-service/internal/interface/price_history"
+	productbundleinterface "stock-service/internal/interface/product_bundle"
 	promotioninterface "stock-service/internal/interface/promotion"
 	referencepriceinterface "stock-service/internal/interface/reference_price"
 	salescommissioninterface "stock-service/internal/interface/sales_commission"
@@ -33,6 +47,8 @@ import (
 )
 
 func main() {
+	brandRepo := memory.NewBrandRepository()
+	categoryRepo := memory.NewCategoryRepository()
 	storeRepo := memory.NewStoreRepository()
 	inventoryRepo := memory.NewInventoryRepository()
 	promotionRepo := memory.NewPromotionRepository()
@@ -43,6 +59,27 @@ func main() {
 	warehouseLinkRepo := memory.NewWarehouseLinkRepository()
 	productRepo := memory.NewProductRepository()
 	memory.SeedProducts(productRepo)
+	productImageRepo := memory.NewProductImageRepository()
+	productTypeRepo := memory.NewProductTypeRepository()
+	productAttrRepo := memory.NewProductAttributeRepository()
+	priceHistRepo := memory.NewPriceHistoryRepository()
+	productBundleRepo := memory.NewProductBundleRepository()
+
+	brandAdapter := brandinterface.NewAdapter(
+		*appbrand.NewCreateBrandUseCase(brandRepo),
+		*appbrand.NewGetBrandUseCase(brandRepo),
+		*appbrand.NewUpdateBrandUseCase(brandRepo),
+		*appbrand.NewDeleteBrandUseCase(brandRepo),
+		*appbrand.NewListBrandsUseCase(brandRepo),
+	)
+
+	categoryAdapter := categoryinterface.NewAdapter(
+		*appcategory.NewCreateCategoryUseCase(categoryRepo),
+		*appcategory.NewGetCategoryUseCase(categoryRepo),
+		*appcategory.NewUpdateCategoryUseCase(categoryRepo),
+		*appcategory.NewDeleteCategoryUseCase(categoryRepo),
+		*appcategory.NewListCategoriesUseCase(categoryRepo),
+	)
 
 	storeAdapter := storeinterface.NewAdapter(
 		appstore.NewCreateStoreUseCase(storeRepo),
@@ -88,6 +125,36 @@ func main() {
 		appproduct.NewActivateProductUseCase(productRepo),
 		appproduct.NewRejectProductUseCase(productRepo),
 		appproduct.NewSoftDeleteProductUseCase(productRepo),
+		appproduct.NewEnableProductUseCase(productRepo),
+		appproduct.NewDisableProductUseCase(productRepo),
+		appproduct.NewUpdateSEOUseCase(productRepo),
+		appproduct.NewListProductsUseCase(productRepo),
+	)
+
+	productImageAdapter := productimageinterface.NewAdapter(
+		*appproductimage.NewCreateImageUseCase(productImageRepo),
+		*appproductimage.NewListImagesUseCase(productImageRepo),
+		*appproductimage.NewDeleteImageUseCase(productImageRepo),
+	)
+
+	productTypeAdapter := producttypeinterface.NewAdapter(
+		*appproducttype.NewCreateTypeUseCase(productTypeRepo),
+		*appproducttype.NewListTypesUseCase(productTypeRepo),
+	)
+
+	productAttrAdapter := productattributeinterface.NewAdapter(
+		*appproductattribute.NewCreateAttributeUseCase(productAttrRepo),
+		*appproductattribute.NewListAttributesUseCase(productAttrRepo),
+	)
+
+	priceHistAdapter := pricehistoryinterface.NewAdapter(
+		*apppricehistory.NewCreatePriceHistoryUseCase(priceHistRepo),
+		*apppricehistory.NewGetPriceHistoryUseCase(priceHistRepo),
+	)
+
+	productBundleAdapter := productbundleinterface.NewAdapter(
+		*appproductbundle.NewCreateBundleUseCase(productBundleRepo),
+		*appproductbundle.NewListBundlesUseCase(productBundleRepo),
 	)
 
 	refPriceAdapter := referencepriceinterface.NewAdapter(
@@ -125,15 +192,22 @@ func main() {
 	)
 
 	mux := router.New(router.Config{
-		Store:           storeAdapter,
-		Inventory:       inventoryAdapter,
-		Product:         productAdapter,
-		Promotion:       promotionAdapter,
-		ReferencePrice:  refPriceAdapter,
-		SalesCommission: salesCommAdapter,
-		StoreCategory:   storeCatAdapter,
-		WarehouseLink:   warehouseLinkAdapter,
-		Warehouse:       warehouseAdapter,
+		Brand:            brandAdapter,
+		Category:         categoryAdapter,
+		Store:            storeAdapter,
+		Inventory:        inventoryAdapter,
+		Product:          productAdapter,
+		ProductImage:     productImageAdapter,
+		ProductType:      productTypeAdapter,
+		ProductAttribute: productAttrAdapter,
+		PriceHistory:     priceHistAdapter,
+		ProductBundle:    productBundleAdapter,
+		Promotion:        promotionAdapter,
+		ReferencePrice:   refPriceAdapter,
+		SalesCommission:  salesCommAdapter,
+		StoreCategory:    storeCatAdapter,
+		WarehouseLink:    warehouseLinkAdapter,
+		Warehouse:        warehouseAdapter,
 	})
 
 	log.Println("listening on :8080")

@@ -1,0 +1,1357 @@
+openapi: "3.0.3"
+info:
+  title: Stock Service API
+  version: "1.0.0"
+  description: API for managing inventory, stores, promotions, warehouses, and related resources.
+
+paths:
+  /api/v1/inventory:
+    post:
+      summary: Create a new inventory listing
+      tags: [Inventory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, warehouse_id, product_id, base_price]
+              properties:
+                store_id:     { type: integer, format: int64 }
+                warehouse_id: { type: integer, format: int64 }
+                product_id:   { type: integer, format: int32 }
+                base_price:   { type: number, format: double }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    get:
+      summary: List inventory with optional filters
+      tags: [Inventory]
+      parameters:
+        - name: store_id
+          in: query
+          schema: { type: integer, format: int64 }
+        - name: product_id
+          in: query
+          schema: { type: integer, format: int32 }
+        - name: vendor_sale_status
+          in: query
+          schema: { type: string }
+        - name: system_sale_status
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryListResponse"
+
+  /api/v1/inventory/search:
+    get:
+      summary: Search inventory by product name
+      tags: [Inventory]
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/inventory/{id}:
+    get:
+      summary: Get inventory by ID
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete an inventory item
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "204":
+          description: No Content
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/inventory/{id}/promotion:
+    post:
+      summary: Apply a promotion to an inventory item
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [promotion_id, final_price, start_at, end_at]
+              properties:
+                promotion_id: { type: integer, format: int64 }
+                final_price:  { type: number, format: double }
+                start_at:     { type: string, format: date-time }
+                end_at:       { type: string, format: date-time }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      summary: Remove a promotion from an inventory item
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/inventory/{id}/inventory:
+    put:
+      summary: Update inventory stock quantities
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [instant_qty, scheduled_qty, min_order_qty]
+              properties:
+                instant_qty:   { type: integer }
+                scheduled_qty:
+                  type: object
+                  additionalProperties: { type: integer }
+                min_order_qty: { type: integer }
+                max_order_qty: { type: integer, nullable: true }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/inventory/{id}/vendor/suspend:
+    post:
+      summary: Suspend vendor sale
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/inventory/{id}/vendor/close:
+    post:
+      summary: Close vendor sale
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/inventory/{id}/system/suspend:
+    post:
+      summary: Suspend system sale
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/inventory/{id}/system/close:
+    post:
+      summary: Close system sale
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/inventory/{id}/reserve:
+    post:
+      summary: Reserve quantity from inventory
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              properties:
+                quantity: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/inventory/{id}/release:
+    post:
+      summary: Release reserved quantity back to inventory
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              properties:
+                quantity: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/inventory/{id}/low-stock:
+    get:
+      summary: Check if inventory is low on stock
+      tags: [Inventory]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+        - name: threshold
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LowStockResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/stores:
+    get:
+      summary: List stores with optional filters
+      tags: [Store]
+      parameters:
+        - name: user_id
+          in: query
+          schema: { type: integer, format: int64 }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreListResponse"
+    post:
+      summary: Create a new store
+      tags: [Store]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, store_name]
+              properties:
+                user_id:    { type: integer, format: int64 }
+                store_name: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/stores/{id}:
+    get:
+      summary: Get store by ID
+      tags: [Store]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update store name
+      tags: [Store]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Delete a store
+      tags: [Store]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "deleted" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/stores/{id}/bulk-sale:
+    post:
+      summary: Toggle bulk sale for a store
+      tags: [Store]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreResponse"
+
+  /api/v1/stores/{id}/commission:
+    post:
+      summary: Toggle commission for a store
+      tags: [Store]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreResponse"
+
+  /api/v1/stores/{id}/contact:
+    put:
+      summary: Update store contact information
+      tags: [Store]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contact_phone: { type: string, nullable: true }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreResponse"
+
+  /api/v1/stores/{id}/profile:
+    put:
+      summary: Update store profile (address, media assets)
+      tags: [Store]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address_id:   { type: integer, format: int64, nullable: true }
+                media_assets: { type: object, additionalProperties: true }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/products:
+    post:
+      summary: Create a new product
+      tags: [Product]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title_fa, brand_id, category_id]
+              properties:
+                title_fa:          { type: string }
+                title_en:          { type: string }
+                description:       { type: string }
+                brand_id:          { type: integer, format: int64 }
+                category_id:       { type: integer, format: int64 }
+                owner_type:        { type: string, enum: [system, user] }
+                owner_id:          { type: integer, format: int64, nullable: true }
+                is_original:       { type: boolean }
+                index_image_file_id: { type: integer, format: int64, nullable: true }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/products/{id}:
+    get:
+      summary: Get product by ID
+      tags: [Product]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int32 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: Update a product
+      tags: [Product]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int32 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title_fa:          { type: string }
+                title_en:          { type: string }
+                description:       { type: string }
+                brand_id:          { type: integer, format: int64 }
+                category_id:       { type: integer, format: int64 }
+                index_image_file_id: { type: integer, format: int64, nullable: true }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Soft delete a product
+      tags: [Product]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int32 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/products/{id}/activate:
+    post:
+      summary: Activate a product
+      tags: [Product]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int32 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/products/{id}/reject:
+    post:
+      summary: Reject a product
+      tags: [Product]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int32 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/promotions:
+    post:
+      summary: Create a promotion
+      tags: [Promotion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromotionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/promotions/{id}:
+    get:
+      summary: Get promotion by ID
+      tags: [Promotion]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromotionResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/promotions/{id}/activate:
+    post:
+      summary: Activate a promotion
+      tags: [Promotion]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "activated" }
+
+  /api/v1/promotions/{id}/deactivate:
+    post:
+      summary: Deactivate a promotion
+      tags: [Promotion]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "deactivated" }
+
+  /api/v1/reference-prices:
+    post:
+      summary: Create a reference price for a product
+      tags: [Reference Price]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id, price, source]
+              properties:
+                product_id: { type: integer, format: int32 }
+                price:      { type: number, format: double }
+                source:     { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferencePriceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/sales-commissions:
+    post:
+      summary: Create a sales commission
+      tags: [Sales Commission]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inventory_id, category_commission_rule_id, sale_model, rate_percent, min_price]
+              properties:
+                inventory_id:                { type: integer, format: int64 }
+                category_commission_rule_id: { type: integer, format: int64 }
+                sale_model:                  { type: string }
+                rate_percent:                { type: number, format: double }
+                min_price:                   { type: number, format: double }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesCommissionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/sales-commissions/{id}/max-price:
+    put:
+      summary: Update max price for a sales commission
+      tags: [Sales Commission]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [max_price]
+              properties:
+                max_price: { type: number, format: double }
+      responses:
+        "200":
+          description: OK
+
+  /api/v1/sales-commissions/{id}/min-qty:
+    put:
+      summary: Update min quantity for a sales commission
+      tags: [Sales Commission]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [min_qty]
+              properties:
+                min_qty: { type: integer }
+      responses:
+        "200":
+          description: OK
+
+  /api/v1/store-categories:
+    post:
+      summary: Create a store category link
+      tags: [Store Category]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, category_id]
+              properties:
+                store_id:    { type: integer, format: int64 }
+                category_id: { type: integer, format: int64 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreCategoryResponse"
+
+  /api/v1/store-categories/{id}/approve:
+    post:
+      summary: Approve a store category
+      tags: [Store Category]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+
+  /api/v1/store-categories/{id}/reject:
+    post:
+      summary: Reject a store category
+      tags: [Store Category]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+
+  /api/v1/warehouse-links:
+    post:
+      summary: Create a link between a store and a warehouse
+      tags: [Warehouse Link]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, warehouse_id]
+              properties:
+                store_id:     { type: integer, format: int64 }
+                warehouse_id: { type: integer, format: int64 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseLinkResponse"
+
+  /api/v1/warehouse-links/{id}/relation:
+    put:
+      summary: Change the relation type of a warehouse link
+      tags: [Warehouse Link]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [relation_type]
+              properties:
+                relation_type: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseLinkResponse"
+
+  /api/v1/warehouses:
+    post:
+      summary: Create a warehouse
+      tags: [Warehouse]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [created_by_user_id, warehouse_name]
+              properties:
+                created_by_user_id: { type: integer, format: int64 }
+                warehouse_name:     { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseResponse"
+
+  /api/v1/warehouses/{id}/visibility:
+    put:
+      summary: Update warehouse visibility
+      tags: [Warehouse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_public]
+              properties:
+                is_public: { type: boolean }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseResponse"
+
+  /api/v1/warehouses/{id}/contact:
+    put:
+      summary: Update warehouse contact information
+      tags: [Warehouse]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [collection_method]
+              properties:
+                phone:            { type: string, nullable: true }
+                contact_phone:    { type: string, nullable: true }
+                collection_method: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseResponse"
+
+components:
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    InventoryListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    LowStockResponse:
+      type: object
+      properties:
+        is_low:
+          type: boolean
+        current_qty:
+          type: integer
+
+    InventoryResponse:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int64
+        StoreID:
+          type: integer
+          format: int64
+        WarehouseID:
+          type: integer
+          format: int64
+        ProductID:
+          type: integer
+          format: int32
+        SaleModel:
+          type: string
+        BasePrice:
+          type: number
+          format: double
+        PromotionID:
+          type: integer
+          format: int64
+          nullable: true
+        FinalPrice:
+          type: number
+          format: double
+          nullable: true
+        StartAt:
+          type: string
+          format: date-time
+          nullable: true
+        EndAt:
+          type: string
+          format: date-time
+          nullable: true
+        PromotionStatus:
+          type: string
+        InstantQty:
+          type: integer
+        MinOrderQty:
+          type: integer
+        MaxOrderQty:
+          type: integer
+          nullable: true
+        Condition:
+          type: string
+        VendorSaleStatus:
+          type: string
+        SystemSaleStatus:
+          type: string
+        CreatedAt:
+          type: string
+          format: date-time
+
+    StoreResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: integer
+          format: int64
+        store_name:
+          type: string
+        status:
+          type: string
+        address_id:
+          type: integer
+          format: int64
+          nullable: true
+        contact_phone:
+          type: string
+          nullable: true
+        media_assets:
+          type: object
+          additionalProperties: true
+        is_commission_applicable:
+          type: boolean
+        is_bulk_sale_enabled:
+          type: boolean
+        created_at:
+          type: string
+
+    StoreListResponse:
+      type: object
+      properties:
+        stores:
+          type: array
+          items:
+            $ref: "#/components/schemas/StoreResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    PromotionResponse:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int64
+        Title:
+          type: string
+        Status:
+          type: string
+        CreatedAt:
+          type: string
+
+    ProductResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        title_fa:
+          type: string
+        title_en:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        brand_id:
+          type: integer
+          format: int64
+        category_id:
+          type: integer
+          format: int64
+        owner_type:
+          type: string
+        owner_id:
+          type: integer
+          format: int64
+          nullable: true
+        is_original:
+          type: boolean
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        index_image_file_id:
+          type: integer
+          format: int64
+          nullable: true
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ReferencePriceResponse:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int64
+        ProductID:
+          type: integer
+          format: int32
+        Price:
+          type: number
+          format: double
+        Source:
+          type: string
+        CreatedAt:
+          type: string
+          format: date-time
+
+    SalesCommissionResponse:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int64
+        InventoryID:
+          type: integer
+          format: int64
+        CategoryCommissionRuleID:
+          type: integer
+          format: int64
+        SaleModel:
+          type: string
+        RatePercent:
+          type: number
+          format: double
+        MinQty:
+          type: integer
+          nullable: true
+        MinPrice:
+          type: number
+          format: double
+        MaxPrice:
+          type: number
+          format: double
+          nullable: true
+        CreatedAt:
+          type: string
+          format: date-time
+
+    StoreCategoryResponse:
+      type: object
+      properties:
+        ID:
+          type: integer
+          format: int64
+        StoreID:
+          type: integer
+          format: int64
+        CategoryID:
+          type: integer
+          format: int64
+        Status:
+          type: string
+        SupportNote:
+          type: string
+        CreatedAt:
+          type: string
+          format: date-time
+
+    WarehouseLinkResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        store_id:
+          type: integer
+          format: int64
+        warehouse_id:
+          type: integer
+          format: int64
+        relation_type:
+          type: string
+
+    WarehouseResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        created_by_user_id:
+          type: integer
+          format: int64
+        warehouse_name:
+          type: string
+        is_public:
+          type: boolean
+        collection_method:
+          type: string
