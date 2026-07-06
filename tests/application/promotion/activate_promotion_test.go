@@ -11,7 +11,9 @@ func TestActivatePromotion_Success(t *testing.T) {
 	repo := newInMemoryPromotionRepo()
 	uc := promotionapp.NewActivatePromotionUseCase(repo)
 
-	p, _ := promotion.NewPromotion("Test")
+	p, _ := promotion.NewPromotion(promotion.CreatePromotionInput{
+		Title: "Test", DiscountType: promotion.DiscountTypePercentage, DiscountValue: 10,
+	})
 	repo.Save(p)
 
 	err := uc.Execute(p.ID)

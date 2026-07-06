@@ -12,7 +12,7 @@ func TestGetPromotion_Success(t *testing.T) {
 	createUC := promotionapp.NewCreatePromotionUseCase(repo)
 	getUC := promotionapp.NewGetPromotionUseCase(repo)
 
-	created, err := createUC.Execute("Summer Sale")
+	created, err := createUC.Execute(validCreateInput())
 	if err != nil {
 		t.Fatal(err)
 	}
